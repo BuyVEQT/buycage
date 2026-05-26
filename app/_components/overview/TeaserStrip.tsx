@@ -20,22 +20,56 @@ function TeaserCard({
   return (
     <Link
       href={href}
-      className="card card-pad group flex flex-col gap-4 hover:border-[var(--border-strong)] transition-colors cursor-pointer min-h-[220px]"
+      className="
+        card card-pad group flex flex-col gap-4 min-h-[220px] cursor-pointer
+        transition-all duration-300 ease-out relative overflow-hidden
+        hover:border-[var(--accent)] hover:-translate-y-1
+        hover:shadow-[0_12px_32px_-12px_color-mix(in_srgb,var(--accent)_40%,transparent)]
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]
+      "
     >
-      <div className="flex items-center justify-between">
+      {/* Soft accent wash that appears on hover */}
+      <span
+        aria-hidden
+        className="
+          absolute inset-0 opacity-0 group-hover:opacity-100
+          transition-opacity duration-300 pointer-events-none
+        "
+        style={{
+          background:
+            "radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 60%)",
+        }}
+      />
+
+      <div className="flex items-center justify-between relative">
         <span className="h-eyebrow">{eyebrow}</span>
-        <span className="text-[11px] text-[var(--fg-tertiary)] group-hover:text-[var(--accent)] transition-colors">
-          Open →
+        <span
+          className="
+            text-[11px] font-medium text-[var(--fg-tertiary)]
+            group-hover:text-[var(--accent)] transition-all duration-300
+            inline-flex items-center gap-1
+            group-hover:translate-x-0.5
+          "
+        >
+          Open
+          <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">
+            →
+          </span>
         </span>
       </div>
       <div
-        className="font-serif text-[var(--fg)] tracking-tight leading-[1.05]"
+        className="
+          font-serif text-[var(--fg)] tracking-tight leading-[1.05] relative
+          group-hover:text-[var(--accent)] transition-colors duration-300
+        "
         style={{ fontSize: 22, letterSpacing: "-0.01em" }}
       >
         {title}
       </div>
-      <div className="flex-1 flex items-center justify-center">{children}</div>
-      <p className="text-[11.5px] text-[var(--fg-tertiary)] leading-snug">
+      <div className="flex-1 flex items-center justify-center relative">
+        {children}
+      </div>
+      <p className="text-[11.5px] text-[var(--fg-tertiary)] leading-snug relative">
         {copy}
       </p>
     </Link>

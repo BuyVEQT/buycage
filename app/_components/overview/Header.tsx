@@ -84,14 +84,11 @@ function Wordmark({ compact }: { compact: boolean }) {
   );
 }
 
-type NavKey = "overview" | "inside";
+type NavKey = "overview" | "why" | "inside" | "fund";
 const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "overview", label: "Overview", href: "/" },
+  { key: "why", label: "Why CAGE", href: "/why" },
   { key: "inside", label: "Inside CAGE", href: "/inside" },
-];
-const MOCK_NAV = [
-  { label: "Holdings", title: "Coming soon" },
-  { label: "About", title: "Coming soon" },
 ];
 
 export function Header({
@@ -153,19 +150,6 @@ export function Header({
                 </Link>
               );
             })}
-            {MOCK_NAV.map((item) => (
-              <span
-                key={item.label}
-                title={item.title}
-                aria-disabled="true"
-                className="text-[var(--fg-tertiary)] opacity-50 cursor-not-allowed select-none flex items-center gap-1.5"
-              >
-                {item.label}
-                <span className="text-[9px] uppercase tracking-[0.14em] text-[var(--fg-tertiary)] border border-[var(--border)] rounded-sm px-1 py-px leading-none opacity-80">
-                  soon
-                </span>
-              </span>
-            ))}
           </nav>
           <div
             className="hidden md:flex items-center gap-2 text-[12px] num pl-4 ml-2 border-l border-[var(--border)] transition-opacity"
