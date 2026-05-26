@@ -140,7 +140,7 @@ export function MoneyFlow() {
   const presets = [1_000, 10_000, 50_000, 250_000];
 
   return (
-    <section className="card card-pad">
+    <section className="card card-pad hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200">
       <SectionHeader
         eyebrow="Allocation"
         title="What your money buys you"

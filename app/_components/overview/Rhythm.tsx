@@ -52,7 +52,7 @@ export function Rhythm() {
   const flats = STREAKS.last30.total - ups - downs;
 
   return (
-    <section className="card card-pad">
+    <section className="card card-pad hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200">
       <div className="flex items-baseline justify-between mb-1">
         <h3 className="h-title">Streak &amp; rhythm</h3>
         <span className="h-eyebrow">Last 12 wks</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useDataset } from "./dataset";
 
@@ -34,7 +35,10 @@ export function TodaysBrief() {
 
   return (
     <section className="mt-6">
-      <div className="card card-pad py-4">
+      <Link
+        href="/inside"
+        className="card card-pad py-4 block hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      >
         <div className="flex items-baseline gap-3 flex-wrap mb-2">
           <span className="h-eyebrow">Today&apos;s brief</span>
           <span className="text-[11px] text-[var(--fg-tertiary)] num">
@@ -62,7 +66,7 @@ export function TodaysBrief() {
             );
           })}
         </p>
-      </div>
+      </Link>
     </section>
   );
 }

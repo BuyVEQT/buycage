@@ -68,7 +68,7 @@ export function XRay() {
   const inFocus = focus ? layout.find((l) => l.sibling.ticker === focus) : null;
 
   return (
-    <section className="card card-pad">
+    <section className="card card-pad hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200">
       <header className="mb-3">
         <div className="flex items-baseline justify-between">
           <h3 className="h-title">X-Ray</h3>

@@ -68,6 +68,7 @@ export function Sparkline({
   color = "currentColor",
   fill = true,
   strokeWidth = 1.5,
+  responsive = false,
 }: {
   data: { t: number; price: number }[];
   width?: number;
@@ -75,6 +76,9 @@ export function Sparkline({
   color?: string;
   fill?: boolean;
   strokeWidth?: number;
+  /** When true, the SVG scales to its container width via viewBox. The
+   *  `width`/`height` numbers are still used as the internal coord system. */
+  responsive?: boolean;
 }) {
   if (!data || !data.length) return null;
   const xs = data.map((d) => d.t);
@@ -95,8 +99,16 @@ export function Sparkline({
     .join(" ");
   const area = path + ` L ${width},${height} L 0,${height} Z`;
   const gid = "spk" + Math.random().toString(36).slice(2, 8);
+  const svgProps = responsive
+    ? {
+        viewBox: `0 0 ${width} ${height}`,
+        width: "100%",
+        height,
+        preserveAspectRatio: "none" as const,
+      }
+    : { width, height };
   return (
-    <svg width={width} height={height} className="overflow-visible">
+    <svg {...svgProps} className="overflow-visible">
       {fill && (
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">

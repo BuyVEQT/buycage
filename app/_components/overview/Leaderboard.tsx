@@ -1,9 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import type { Sibling, Bar } from "./data";
 import { useDataset } from "./dataset";
 import { Sparkline } from "./shared";
+
+// Hover treatment shared by the Leader and Ranked cards. Subtle border
+// brighten + lift, with a focus ring for keyboard users.
+const HOVER_CARD =
+  "block hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
 
 function fmtPct(n: number, digits = 2): string {
   const sign = n > 0 ? "+" : "";
@@ -60,7 +66,10 @@ function LeaderCard({
   const color = isGain ? "var(--gain)" : "var(--loss)";
   const swatch = sibPalette[s.color];
   return (
-    <div className="card card-pad relative flex flex-col min-h-[280px]">
+    <Link
+      href="/inside"
+      className={`card card-pad relative flex flex-col min-h-[280px] ${HOVER_CARD}`}
+    >
       {/* Top row */}
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--fg-tertiary)]">
@@ -113,7 +122,7 @@ function LeaderCard({
 
       {/* Sparkline */}
       <div className="mt-auto pt-5">
-        <div className="relative h-[68px] w-full">
+        <div className="relative h-[68px] w-full overflow-hidden">
           <Sparkline
             data={sparkSeries(s.ticker, siblingBars)}
             color={color}
@@ -121,13 +130,14 @@ function LeaderCard({
             height={68}
             strokeWidth={1.5}
             fill
+            responsive
           />
         </div>
         <div className="text-[10px] text-[var(--fg-tertiary)] italic mt-1">
           30 trading days
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -143,7 +153,10 @@ function RankedCard({
   const isGain = s.dayChangePct >= 0;
   const color = isGain ? "var(--gain)" : "var(--loss)";
   return (
-    <div className="card flex items-center gap-4 px-4 py-3.5">
+    <Link
+      href="/inside"
+      className={`card flex items-center gap-4 px-4 py-3.5 ${HOVER_CARD}`}
+    >
       {/* Rank + identity */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <span
@@ -194,7 +207,7 @@ function RankedCard({
           {fmtPP(s.contribution)}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
