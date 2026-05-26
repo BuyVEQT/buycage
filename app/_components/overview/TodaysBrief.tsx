@@ -33,16 +33,16 @@ export function TodaysBrief() {
 
   return (
     <section className="mt-6">
-      <div className="card card-pad">
-        <div className="flex items-baseline gap-3 flex-wrap mb-3">
+      <div className="card card-pad py-4">
+        <div className="flex items-baseline gap-3 flex-wrap mb-2">
           <span className="h-eyebrow">Today&apos;s brief</span>
           <span className="text-[11px] text-[var(--fg-tertiary)] num">
             {dateStr}
           </span>
         </div>
         <p
-          className="font-serif text-[var(--fg)] tracking-tight leading-[1.35]"
-          style={{ fontSize: "clamp(20px, 2.1vw, 26px)" }}
+          className="font-serif text-[var(--fg-secondary)] tracking-tight leading-[1.45]"
+          style={{ fontSize: "clamp(14px, 1.4vw, 17px)" }}
         >
           {words.map((w, i) => {
             const t = Math.max(0, Math.min(1, (phase - i) / 8));

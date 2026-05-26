@@ -1,12 +1,190 @@
 "use client";
 
 import { useMemo } from "react";
-import { SIBLINGS, SIB_PALETTE, PRICE } from "./data";
-import { SectionHeader } from "./shared";
+import {
+  PRICE,
+  SIBLINGS,
+  SIBLING_BARS,
+  SIB_PALETTE,
+  type Sibling,
+} from "./data";
+import { Sparkline } from "./shared";
 
 function fmtPct(n: number, digits = 2): string {
   const sign = n > 0 ? "+" : "";
   return `${sign}${n.toFixed(digits)}%`;
+}
+function fmtPP(n: number, digits = 2): string {
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n.toFixed(digits)} pp`;
+}
+
+function shortName(s: Sibling): string {
+  // "Avantis CIBC US Equity ETF" → "US Equity"
+  return s.name
+    .replace("Avantis CIBC ", "")
+    .replace(" ETF", "")
+    .trim();
+}
+
+function sparkSeries(ticker: string) {
+  return SIBLING_BARS[ticker].slice(-30).map((b) => ({
+    t: b.t,
+    price: b.close,
+  }));
+}
+
+function buildSentence(sorted: Sibling[]): string {
+  const leader = sorted[0];
+  const upCount = SIBLINGS.filter((s) => s.dayChangePct > 0).length;
+  const downCount = SIBLINGS.filter((s) => s.dayChangePct < 0).length;
+  const leadName = shortName(leader);
+  const verb = leader.contribution >= 0 ? "carried" : "weighed on";
+  let rhythm: string;
+  if (downCount === 0) rhythm = "All five sleeves moved together.";
+  else if (upCount === SIBLINGS.length) rhythm = "Every sleeve participated.";
+  else if (downCount === 1)
+    rhythm = `Four of five sleeves moved with it; one held back.`;
+  else
+    rhythm = `${upCount} of ${SIBLINGS.length} sleeves moved with the tape.`;
+  return `${leadName} ${verb} today · ${fmtPP(
+    leader.contribution
+  )} of contribution. ${rhythm}`;
+}
+
+function LeaderCard({ s }: { s: Sibling }) {
+  const isGain = s.dayChangePct >= 0;
+  const color = isGain ? "var(--gain)" : "var(--loss)";
+  const swatch = SIB_PALETTE[s.color];
+  return (
+    <div className="card card-pad relative flex flex-col min-h-[280px]">
+      {/* Top row */}
+      <div className="flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--fg-tertiary)]">
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: swatch }}
+          />
+          Leader
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-[var(--fg-tertiary)] font-mono">
+          {s.ticker.replace(".NE", "")} · Weight {(s.weight * 100).toFixed(1)}%
+        </span>
+      </div>
+
+      {/* Name */}
+      <div
+        className="font-serif text-[var(--fg)] tracking-tight mt-4 leading-[1]"
+        style={{ fontSize: "clamp(34px, 4vw, 48px)", letterSpacing: "-0.02em" }}
+      >
+        {shortName(s)}
+      </div>
+
+      {/* % change + contribution */}
+      <div className="flex items-end gap-8 mt-5">
+        <div
+          className="font-serif num tracking-tight leading-none"
+          style={{
+            color,
+            fontSize: "clamp(40px, 4.6vw, 56px)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {isGain ? "+" : ""}
+          {s.dayChangePct.toFixed(2)}
+          <span style={{ fontSize: "0.55em" }}>%</span>
+        </div>
+        <div className="pb-1">
+          <div className="h-eyebrow mb-1">Contribution</div>
+          <div
+            className="font-serif num leading-none"
+            style={{ color, fontSize: "26px" }}
+          >
+            {fmtPP(s.contribution)}
+          </div>
+          <div className="text-[11px] text-[var(--fg-tertiary)] mt-1.5 italic">
+            in today&apos;s move
+          </div>
+        </div>
+      </div>
+
+      {/* Sparkline */}
+      <div className="mt-auto pt-5">
+        <div className="relative h-[68px] w-full">
+          <Sparkline
+            data={sparkSeries(s.ticker)}
+            color={color}
+            width={520}
+            height={68}
+            strokeWidth={1.5}
+            fill
+          />
+        </div>
+        <div className="text-[10px] text-[var(--fg-tertiary)] italic mt-1">
+          30 trading days
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RankedCard({ s, rank }: { s: Sibling; rank: number }) {
+  const isGain = s.dayChangePct >= 0;
+  const color = isGain ? "var(--gain)" : "var(--loss)";
+  return (
+    <div className="card flex items-center gap-4 px-4 py-3.5">
+      {/* Rank + identity */}
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <span
+          className="font-serif text-[var(--fg-tertiary)] num leading-none"
+          style={{ fontSize: 24 }}
+        >
+          {rank}
+        </span>
+        <div className="min-w-0">
+          <div
+            className="font-serif text-[var(--fg)] italic leading-tight"
+            style={{ fontSize: 18, letterSpacing: "-0.01em" }}
+          >
+            {shortName(s)}
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.14em] text-[var(--fg-tertiary)] font-mono mt-0.5">
+            {s.ticker.replace(".NE", "")} · {(s.weight * 100).toFixed(1)}%
+          </div>
+        </div>
+      </div>
+
+      {/* Sparkline */}
+      <div className="hidden sm:block shrink-0">
+        <Sparkline
+          data={sparkSeries(s.ticker)}
+          color={color}
+          width={108}
+          height={32}
+          strokeWidth={1.25}
+          fill
+        />
+      </div>
+
+      {/* % + contribution */}
+      <div className="text-right shrink-0 min-w-[88px]">
+        <div
+          className="font-serif num leading-none"
+          style={{ color, fontSize: 22, letterSpacing: "-0.01em" }}
+        >
+          {isGain ? "+" : ""}
+          {s.dayChangePct.toFixed(2)}
+          <span style={{ fontSize: "0.6em" }}>%</span>
+        </div>
+        <div
+          className="text-[11px] num mt-1.5"
+          style={{ color }}
+        >
+          {fmtPP(s.contribution)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function Leaderboard() {
@@ -17,140 +195,41 @@ export function Leaderboard() {
       ),
     []
   );
-  const maxAbs = useMemo(
-    () => Math.max(...sorted.map((s) => Math.abs(s.contribution)), 0.001),
-    [sorted]
-  );
-  const totalAbs = useMemo(
-    () => sorted.reduce((s, x) => s + Math.abs(x.contribution), 0),
-    [sorted]
-  );
   const cageMove = PRICE.dayChangePct;
+  const sentence = buildSentence(sorted);
+  const leader = sorted[0];
+  const ranked = sorted.slice(1);
 
   return (
     <section className="mt-12">
-      <SectionHeader
-        eyebrow="Decomposition"
-        title="What moved CAGE today"
-        subtitle="Contribution to today's return = each sibling ETF's weight × its daily move."
-        right={
-          <span
-            className={
-              "text-[14px] font-medium num " +
-              (cageMove >= 0 ? "text-[var(--gain)]" : "text-[var(--loss)]")
-            }
-          >
-            CAGE {fmtPct(cageMove)}
-          </span>
-        }
-      />
+      {/* Header: in-a-sentence row */}
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <span className="pill" data-tone="muted">
+          In a sentence
+        </span>
+        <span
+          className="font-serif italic text-[var(--fg-secondary)] tracking-tight"
+          style={{ fontSize: "clamp(14px, 1.4vw, 17px)" }}
+        >
+          {sentence}
+        </span>
+        <span
+          className={
+            "ml-auto text-[12px] num font-medium " +
+            (cageMove >= 0 ? "text-[var(--gain)]" : "text-[var(--loss)]")
+          }
+        >
+          CAGE {fmtPct(cageMove)}
+        </span>
+      </div>
 
-      <div className="card card-pad">
-        <div className="mb-5">
-          <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.14em] text-[var(--fg-tertiary)] mb-2">
-            <span>Share of today&apos;s total movement</span>
-            <span className="num">{totalAbs.toFixed(3)}% absolute</span>
-          </div>
-          <div className="relative h-3 rounded-full overflow-hidden flex bg-[var(--surface-2)]">
-            {sorted.map((s) => {
-              const share = Math.abs(s.contribution) / totalAbs;
-              const isGain = s.contribution >= 0;
-              const color = isGain
-                ? `color-mix(in srgb, ${SIB_PALETTE[s.color]} 88%, white)`
-                : `color-mix(in srgb, var(--loss) 72%, ${SIB_PALETTE[s.color]})`;
-              return (
-                <div
-                  key={s.ticker}
-                  title={`${s.ticker} · ${fmtPct(s.contribution, 3)}`}
-                  className="h-full"
-                  style={{ width: `${share * 100}%`, background: color }}
-                />
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-[11px]">
-            {sorted.map((s) => (
-              <span
-                key={s.ticker}
-                className="inline-flex items-center gap-1.5 text-[var(--fg-tertiary)]"
-              >
-                <span
-                  className="w-2 h-2 rounded-sm"
-                  style={{ background: SIB_PALETTE[s.color] }}
-                />
-                {s.ticker.replace(".NE", "")}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="-mx-2">
-          <div className="grid grid-cols-[1fr_64px_72px_72px_140px] gap-x-3 px-2 pb-2 text-[10px] uppercase tracking-[0.14em] text-[var(--fg-tertiary)]">
-            <span>Sibling</span>
-            <span className="text-right">Weight</span>
-            <span className="text-right">Day</span>
-            <span className="text-right">Contrib.</span>
-            <span></span>
-          </div>
-          <ul className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
-            {sorted.map((s) => {
-              const c = s.contribution;
-              const isGain = c >= 0;
-              const color = isGain ? "var(--gain)" : "var(--loss)";
-              const barWidth = (Math.abs(c) / maxAbs) * 100;
-              return (
-                <li
-                  key={s.ticker}
-                  className="grid grid-cols-[1fr_64px_72px_72px_140px] gap-x-3 px-2 py-3 items-center text-[13px]"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className="w-2.5 h-2.5 rounded-sm shrink-0"
-                      style={{ background: SIB_PALETTE[s.color] }}
-                    />
-                    <div className="min-w-0">
-                      <div className="font-mono text-[12px] text-[var(--fg)]">
-                        {s.ticker.replace(".NE", "")}
-                      </div>
-                      <div className="text-[11px] text-[var(--fg-tertiary)] truncate">
-                        {s.name.replace("Avantis CIBC ", "")}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="text-right num text-[var(--fg-secondary)]">
-                    {(s.weight * 100).toFixed(0)}%
-                  </span>
-                  <span
-                    className={
-                      "text-right num " +
-                      (s.dayChangePct >= 0
-                        ? "text-[var(--gain)]"
-                        : "text-[var(--loss)]")
-                    }
-                  >
-                    {fmtPct(s.dayChangePct)}
-                  </span>
-                  <span
-                    className="text-right num font-medium"
-                    style={{ color }}
-                  >
-                    {fmtPct(c, 3)}
-                  </span>
-                  <div className="relative h-2 bg-[var(--surface-2)] rounded-full">
-                    <div className="absolute top-0 bottom-0 left-1/2 w-px bg-[var(--border-strong)]" />
-                    <div
-                      className="absolute top-0 bottom-0 rounded-full"
-                      style={{
-                        background: color,
-                        left: isGain ? "50%" : `calc(50% - ${barWidth / 2}%)`,
-                        width: `${barWidth / 2}%`,
-                      }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+      {/* Leader + ranked grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4">
+        <LeaderCard s={leader} />
+        <div className="flex flex-col gap-3">
+          {ranked.map((s, i) => (
+            <RankedCard key={s.ticker} s={s} rank={i + 2} />
+          ))}
         </div>
       </div>
     </section>
