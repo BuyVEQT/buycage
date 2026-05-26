@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CAGE_META } from "./data";
+import { useDataset } from "./dataset";
 import { IconBook, IconChevronDown } from "./icons";
 
 export function MethodologyDrawer() {
+  const { CAGE_META } = useDataset();
   const [open, setOpen] = useState(false);
   const inception = new Date(CAGE_META.inception).toLocaleDateString("en-CA", {
     year: "numeric",

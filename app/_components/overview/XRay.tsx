@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SIBLINGS, SIB_PALETTE, type Sibling, type Holding } from "./data";
+import type { Sibling, Holding } from "./data";
+import { useDataset } from "./dataset";
 
 function pol(r: number, a: number): [number, number] {
   return [Math.cos(a) * r, Math.sin(a) * r];
@@ -27,6 +28,7 @@ type Hover =
   | { kind: "holding"; id: string; label: string; sublabel: string; weight: number };
 
 export function XRay() {
+  const { SIBLINGS, SIB_PALETTE } = useDataset();
   const [focus, setFocus] = useState<string | null>(null);
   const [hover, setHover] = useState<Hover | null>(null);
 
@@ -57,7 +59,7 @@ export function XRay() {
       });
       return { sibling: s, a0, a1, holdings: holdArcs };
     });
-  }, []);
+  }, [SIBLINGS]);
 
   function effWeight(parent: Sibling, h: Holding): number {
     return parent.cageWeight * h.weight;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CAGE_BARS, PRICE } from "./data";
+import { useDataset } from "./dataset";
 import { IconX } from "./icons";
 
 const LV_KEY = "buycage:lastVisit";
@@ -26,6 +26,7 @@ function fmtRelative(ms: number): string {
 type Visit = { ts: number; price: number; synthetic?: boolean };
 
 export function SinceLastVisit() {
+  const { CAGE_BARS, PRICE } = useDataset();
   const [state, setState] = useState<Visit | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -56,7 +57,7 @@ export function SinceLastVisit() {
     } catch {
       /* localStorage blocked */
     }
-  }, []);
+  }, [CAGE_BARS, PRICE]);
 
   if (!state || dismissed) return null;
   const delta = PRICE.current - state.price;

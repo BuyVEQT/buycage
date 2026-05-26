@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { PRICE, RETURNS } from "./data";
+import { useDataset } from "./dataset";
 import { RangeBar } from "./RangeBar";
 
 // ─── AnimatedNumber ──────────────────────────────────────────────────────────
@@ -176,6 +176,7 @@ function SnapshotCard({
 }
 
 export function SnapshotGrid() {
+  const { PRICE } = useDataset();
   const P = PRICE;
   const fmtAUM = (n: number) => {
     if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
@@ -283,6 +284,7 @@ export function SnapshotGrid() {
 
 // ─── ReturnsTable ────────────────────────────────────────────────────────────
 export function ReturnsTable() {
+  const { RETURNS } = useDataset();
   const cols = ["1D", "1W", "1M", "3M", "YTD", "1Y", "SI"] as const;
   const labels: Record<string, string> = {
     "1D": "1 day",

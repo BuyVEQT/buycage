@@ -1,13 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  PRICE,
-  SIBLINGS,
-  SIBLING_BARS,
-  SIB_PALETTE,
-  type Sibling,
-} from "./data";
+import type { Sibling, Bar } from "./data";
+import { useDataset } from "./dataset";
 import { Sparkline } from "./shared";
 
 function fmtPct(n: number, digits = 2): string {
@@ -27,35 +22,43 @@ function shortName(s: Sibling): string {
     .trim();
 }
 
-function sparkSeries(ticker: string) {
-  return SIBLING_BARS[ticker].slice(-30).map((b) => ({
+function sparkSeries(ticker: string, siblingBars: Record<string, Bar[]>) {
+  return siblingBars[ticker].slice(-30).map((b) => ({
     t: b.t,
     price: b.close,
   }));
 }
 
-function buildSentence(sorted: Sibling[]): string {
+function buildSentence(sorted: Sibling[], siblings: Sibling[]): string {
   const leader = sorted[0];
-  const upCount = SIBLINGS.filter((s) => s.dayChangePct > 0).length;
-  const downCount = SIBLINGS.filter((s) => s.dayChangePct < 0).length;
+  const upCount = siblings.filter((s) => s.dayChangePct > 0).length;
+  const downCount = siblings.filter((s) => s.dayChangePct < 0).length;
   const leadName = shortName(leader);
   const verb = leader.contribution >= 0 ? "carried" : "weighed on";
   let rhythm: string;
   if (downCount === 0) rhythm = "All five sleeves moved together.";
-  else if (upCount === SIBLINGS.length) rhythm = "Every sleeve participated.";
+  else if (upCount === siblings.length) rhythm = "Every sleeve participated.";
   else if (downCount === 1)
     rhythm = `Four of five sleeves moved with it; one held back.`;
   else
-    rhythm = `${upCount} of ${SIBLINGS.length} sleeves moved with the tape.`;
+    rhythm = `${upCount} of ${siblings.length} sleeves moved with the tape.`;
   return `${leadName} ${verb} today · ${fmtPP(
     leader.contribution
   )} of contribution. ${rhythm}`;
 }
 
-function LeaderCard({ s }: { s: Sibling }) {
+function LeaderCard({
+  s,
+  siblingBars,
+  sibPalette,
+}: {
+  s: Sibling;
+  siblingBars: Record<string, Bar[]>;
+  sibPalette: Record<string, string>;
+}) {
   const isGain = s.dayChangePct >= 0;
   const color = isGain ? "var(--gain)" : "var(--loss)";
-  const swatch = SIB_PALETTE[s.color];
+  const swatch = sibPalette[s.color];
   return (
     <div className="card card-pad relative flex flex-col min-h-[280px]">
       {/* Top row */}
@@ -112,7 +115,7 @@ function LeaderCard({ s }: { s: Sibling }) {
       <div className="mt-auto pt-5">
         <div className="relative h-[68px] w-full">
           <Sparkline
-            data={sparkSeries(s.ticker)}
+            data={sparkSeries(s.ticker, siblingBars)}
             color={color}
             width={520}
             height={68}
@@ -128,7 +131,15 @@ function LeaderCard({ s }: { s: Sibling }) {
   );
 }
 
-function RankedCard({ s, rank }: { s: Sibling; rank: number }) {
+function RankedCard({
+  s,
+  rank,
+  siblingBars,
+}: {
+  s: Sibling;
+  rank: number;
+  siblingBars: Record<string, Bar[]>;
+}) {
   const isGain = s.dayChangePct >= 0;
   const color = isGain ? "var(--gain)" : "var(--loss)";
   return (
@@ -157,7 +168,7 @@ function RankedCard({ s, rank }: { s: Sibling; rank: number }) {
       {/* Sparkline */}
       <div className="hidden sm:block shrink-0">
         <Sparkline
-          data={sparkSeries(s.ticker)}
+          data={sparkSeries(s.ticker, siblingBars)}
           color={color}
           width={108}
           height={32}
@@ -188,15 +199,16 @@ function RankedCard({ s, rank }: { s: Sibling; rank: number }) {
 }
 
 export function Leaderboard() {
+  const { PRICE, SIBLINGS, SIBLING_BARS, SIB_PALETTE } = useDataset();
   const sorted = useMemo(
     () =>
       [...SIBLINGS].sort(
         (a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)
       ),
-    []
+    [SIBLINGS]
   );
   const cageMove = PRICE.dayChangePct;
-  const sentence = buildSentence(sorted);
+  const sentence = buildSentence(sorted, SIBLINGS);
   const leader = sorted[0];
   const ranked = sorted.slice(1);
 
@@ -225,10 +237,10 @@ export function Leaderboard() {
 
       {/* Leader + ranked grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4">
-        <LeaderCard s={leader} />
+        <LeaderCard s={leader} siblingBars={SIBLING_BARS} sibPalette={SIB_PALETTE} />
         <div className="flex flex-col gap-3">
           {ranked.map((s, i) => (
-            <RankedCard key={s.ticker} s={s} rank={i + 2} />
+            <RankedCard key={s.ticker} s={s} rank={i + 2} siblingBars={SIBLING_BARS} />
           ))}
         </div>
       </div>

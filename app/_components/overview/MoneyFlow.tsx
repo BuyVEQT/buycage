@@ -3,13 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sankey, sankeyLinkHorizontal } from "d3-sankey";
 import type { SankeyGraph } from "d3-sankey";
-import {
-  SIBLINGS,
-  SIB_PALETTE,
-  EFFECTIVE_HOLDINGS,
-  REGION_OF_ETF,
-  type Sibling,
-} from "./data";
+import type { Sibling } from "./data";
+import { useDataset } from "./dataset";
 import { SectionHeader } from "./shared";
 
 type NodeKind = "root" | "sibling" | "region";
@@ -73,6 +68,7 @@ function AniMoney({
 }
 
 export function MoneyFlow() {
+  const { SIBLINGS, SIB_PALETTE, EFFECTIVE_HOLDINGS, REGION_OF_ETF } = useDataset();
   const [amount, setAmount] = useState(10_000);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 

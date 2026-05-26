@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { TODAYS_BRIEF } from "./data";
+import { useDataset } from "./dataset";
 
 export function TodaysBrief() {
+  const { TODAYS_BRIEF } = useDataset();
   const text = TODAYS_BRIEF;
   const dateStr = useMemo(
     () =>

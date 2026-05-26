@@ -1,6 +1,7 @@
 "use client";
 
-import { ANOMALIES, type Anomaly } from "./data";
+import type { Anomaly } from "./data";
+import { useDataset } from "./dataset";
 import { ANOMALY_ICONS, IconInfo } from "./icons";
 
 function AnomalyPill({ tag }: { tag: Anomaly }) {
@@ -15,6 +16,7 @@ function AnomalyPill({ tag }: { tag: Anomaly }) {
 }
 
 export function AnomalyRow() {
+  const { ANOMALIES } = useDataset();
   if (!ANOMALIES.length) return null;
   return (
     <div className="flex flex-wrap items-center gap-2 mt-3">

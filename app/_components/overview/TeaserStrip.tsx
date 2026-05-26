@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CAGE_BARS, EFFECTIVE_HOLDINGS, SIBLINGS, STREAKS } from "./data";
+import { useDataset } from "./dataset";
 import { Sparkline } from "./shared";
 
 function TeaserCard({
@@ -43,6 +43,7 @@ function TeaserCard({
 }
 
 function MiniHeat() {
+  const { CAGE_BARS } = useDataset();
   const last30 = CAGE_BARS.slice(-30);
   const maxAbs = Math.max(...last30.map((b, i) => {
     if (i === 0) return 0.001;
@@ -71,6 +72,7 @@ function MiniHeat() {
 }
 
 function MiniDonut() {
+  const { SIBLINGS } = useDataset();
   // Tiny sunburst preview — 5 sibling wedges from a center
   const size = 96;
   const cx = size / 2;
@@ -123,6 +125,7 @@ function MiniDonut() {
 }
 
 function MiniSpark() {
+  const { CAGE_BARS } = useDataset();
   const series = CAGE_BARS.slice(-60).map((b) => ({ t: b.t, price: b.close }));
   return (
     <Sparkline data={series} color="var(--accent)" width={220} height={56} strokeWidth={1.5} />
@@ -130,6 +133,7 @@ function MiniSpark() {
 }
 
 export function TeaserStrip() {
+  const { EFFECTIVE_HOLDINGS, STREAKS } = useDataset();
   const topHolding = EFFECTIVE_HOLDINGS[0];
   return (
     <section className="mt-12">

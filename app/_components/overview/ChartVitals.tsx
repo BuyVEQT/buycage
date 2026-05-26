@@ -1,6 +1,6 @@
 "use client";
 
-import { PRICE } from "./data";
+import { useDataset } from "./dataset";
 
 function fmtAUM(n: number): string {
   if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
@@ -51,6 +51,7 @@ function Stat({
  * and NAV intentionally dropped per the design pass.
  */
 export function ChartVitals() {
+  const { PRICE } = useDataset();
   const P = PRICE;
   return (
     <div className="mt-4 pt-4 border-t border-[var(--border)] grid grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-3">

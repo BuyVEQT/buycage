@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CAGE_META, PRICE, SERIES } from "./data";
+import { useDataset } from "./dataset";
 import { IconArrowDown, IconArrowUp } from "./icons";
 import { AnimatedNumber, Reveal, Sparkline } from "./shared";
 import { AnomalyRow } from "./AnomalyRow";
@@ -16,6 +16,7 @@ import { Header, useScrollY } from "./Header";
 import { Footer } from "./Footer";
 
 function Hero() {
+  const { CAGE_META, PRICE, SERIES } = useDataset();
   const isGain = PRICE.dayChange >= 0;
   const color = isGain ? "var(--gain)" : "var(--loss)";
 

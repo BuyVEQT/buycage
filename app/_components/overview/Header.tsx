@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { PRICE } from "./data";
+import { useDataset } from "./dataset";
 import { IconMoon, IconSun } from "./icons";
 
 // ─── hooks ───────────────────────────────────────────────────────────────────
@@ -105,6 +105,7 @@ export function Header({
   compressed: boolean;
   active: NavKey;
 }) {
+  const { PRICE } = useDataset();
   const now = useNow();
   const status = now
     ? marketStatus(now)

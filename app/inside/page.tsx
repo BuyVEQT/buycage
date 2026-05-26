@@ -1,12 +1,9 @@
-"use client";
+import { fetchDashboard } from "@/lib/data/fetchDashboard";
+import { InsideClient } from "../_components/inside/InsideClient";
 
-import dynamic from "next/dynamic";
+export const revalidate = 60;
 
-const InsideCage = dynamic(
-  () => import("../_components/inside/InsideCage").then((m) => m.InsideCage),
-  { ssr: false }
-);
-
-export default function InsidePage() {
-  return <InsideCage />;
+export default async function InsidePage() {
+  const live = await fetchDashboard().catch(() => null);
+  return <InsideClient live={live} />;
 }

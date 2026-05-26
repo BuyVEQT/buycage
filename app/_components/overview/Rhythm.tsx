@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CAGE_BARS, DIRECTIONS, STREAKS, type Direction } from "./data";
+import type { Direction } from "./data";
+import { useDataset } from "./dataset";
 import { IconTrendDown, IconTrendUp } from "./icons";
 
 type Week = { ts: string | null; days: Record<number, Direction> };
 
 export function Rhythm() {
+  const { CAGE_BARS, DIRECTIONS, STREAKS } = useDataset();
   const dirs = DIRECTIONS;
   const last60 = dirs.slice(-60);
 

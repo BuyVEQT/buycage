@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { CAGE_BARS, PRICE, type Bar } from "./data";
+import type { Bar } from "./data";
+import { useDataset } from "./dataset";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function dailyReturnsFrom(bars: Bar[]): number[] {
@@ -682,6 +683,7 @@ function StreakBadge({ streak }: { streak: { count: number; dir: number } }) {
 
 // ─── DayVitals ───────────────────────────────────────────────────────────────
 export function DayVitals() {
+  const { PRICE, CAGE_BARS } = useDataset();
   const P = PRICE;
   const bars = CAGE_BARS;
   const last60Bars = bars.slice(-60);

@@ -13,14 +13,8 @@ import {
   ReferenceLine,
   Line,
 } from "recharts";
-import {
-  BENCHMARK,
-  DRAWDOWN,
-  PRICE,
-  ROLLING30,
-  SERIES,
-  type SeriesPoint,
-} from "./data";
+import type { SeriesPoint } from "./data";
+import { useDataset } from "./dataset";
 
 const TF_ORDER = ["1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"] as const;
 type TF = (typeof TF_ORDER)[number];
@@ -189,6 +183,7 @@ function ChartTooltip({
 type ChartRow = { t: number; price: number | null; bench: number | null };
 
 export function PriceChart() {
+  const { PRICE, SERIES, BENCHMARK, DRAWDOWN, ROLLING30 } = useDataset();
   const [tf, setTf] = useState<TF>("1M");
   const [showBench, setShowBench] = useState(false);
   const [mode, setMode] = useState<Mode>("price");
@@ -225,7 +220,7 @@ export function PriceChart() {
         .map((pt) => ({ t: pt.t, price: pt.price, bench: null }));
     }
     return [];
-  }, [tf, mode]);
+  }, [tf, mode, SERIES, BENCHMARK, DRAWDOWN, ROLLING30]);
 
   const prev = PRICE.prevClose;
   const isGain = PRICE.dayChange >= 0;
