@@ -756,7 +756,14 @@ export function DayVitals() {
         <div className="h-eyebrow mb-1">
           Distribution of daily moves · 60d
         </div>
-        <BellCurve todayReturn={todayReturn} mean={mean} std={std} />
+        {last60Bars.length >= 20 ? (
+          <BellCurve todayReturn={todayReturn} mean={mean} std={std} />
+        ) : (
+          <div className="text-[11.5px] text-[var(--fg-tertiary)] italic py-6 text-center">
+            Not enough history yet — needs ~20 sessions, has{" "}
+            {Math.max(0, last60Bars.length - 1)}.
+          </div>
+        )}
       </div>
 
       <p className="text-[11px] text-[var(--fg-tertiary)] mt-4 leading-relaxed">

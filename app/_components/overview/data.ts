@@ -679,39 +679,27 @@ function buildRegions(siblings: Sibling[]) {
   return [...acc.entries()].map(([name, weight]) => ({ name, weight }));
 }
 
-function genIntraday({
+// Honest 1D series: a 2-point line from today's open (9:30 ET) to the
+// current quote time. Yahoo's `quote()` doesn't return real intraday bars
+// — we used to synthesise 78 fake points; now we draw only what we know.
+// Returns [] if we don't have an open + current pair.
+function intradayFromQuote({
   open,
   close,
-  dayHigh,
-  dayLow,
   today,
 }: {
   open: number;
   close: number;
-  dayHigh: number;
-  dayLow: number;
   today: Date;
 }): SeriesPoint[] {
-  const N = 78;
-  const rng = mulberry32(13);
-  const arr: number[] = [];
-  for (let i = 0; i < N; i++) {
-    const f = i / (N - 1);
-    const base = open + (close - open) * f;
-    const noise = (rng() - 0.5) * (dayHigh - dayLow) * 0.18;
-    let p = base + noise;
-    p = Math.min(dayHigh, Math.max(dayLow, p));
-    arr.push(p);
-  }
-  if (N > 0) {
-    arr[0] = open;
-    arr[N - 1] = close;
-  }
-  const startT = today.getTime() - 6.5 * 60 * 60 * 1000;
-  return arr.map((price, i) => ({
-    t: startT + i * 5 * 60 * 1000,
-    price: +price.toFixed(4),
-  }));
+  if (!open || !close) return [];
+  // TSX open is 9:30 ET (13:30 UTC during DST).
+  const openTime = new Date(today);
+  openTime.setUTCHours(13, 30, 0, 0);
+  return [
+    { t: openTime.getTime(), price: +open.toFixed(4) },
+    { t: today.getTime(), price: +close.toFixed(4) },
+  ];
 }
 
 function priceFromBars(bars: Bar[]): PriceShape {
@@ -840,11 +828,9 @@ function assemble(opts: {
   let price = priceFromBars(cageBars);
   if (cageQuoteOverride) price = overlayQuoteOntoPrice(price, cageQuoteOverride);
 
-  const intraday = genIntraday({
+  const intraday = intradayFromQuote({
     open: price.open,
     close: price.current,
-    dayHigh: price.dayRange[1],
-    dayLow: price.dayRange[0],
     today,
   });
 
@@ -948,38 +934,31 @@ export function buildMockDataset(refDate?: Date): Dataset {
   });
 }
 
+/**
+ * Build a Dataset from live Yahoo payload. Real data only — no synthesis,
+ * no mock fallback. If Yahoo returned nothing for a series, the
+ * corresponding field stays empty and the UI shows its empty state /
+ * disables affected timeframes.
+ */
 export function buildLiveDataset(payload: DashboardPayload): Dataset {
-  // CAGE bars — prefer live history; fall back to mock if Yahoo had nothing
-  // (CAGE is new and may not have much history yet).
   const today = new Date();
-  const mock = buildMockDataset(today);
 
   const cageBars =
     payload.cage.history && payload.cage.history.data.length > 0
       ? payloadHistoryToBars(payload.cage.history)
-      : mock.CAGE_BARS;
+      : [];
 
-  // Per-sibling: merge live where available, mock otherwise. Keyed by config
-  // ticker so the rest of the pipeline doesn't care which source it came from.
   const siblingBars: Record<string, Bar[]> = {};
-  for (const cfg of SIBLING_CONFIG) {
-    const livePayload = payload.siblings.find((s) => s.ticker === cfg.ticker);
-    if (livePayload?.history && livePayload.history.data.length > 0) {
-      siblingBars[cfg.ticker] = payloadHistoryToBars(livePayload.history);
-    } else {
-      siblingBars[cfg.ticker] = mock.SIBLING_BARS[cfg.ticker] ?? [];
-    }
-  }
-
-  // Per-sibling day-change % from live quote; mock value if quote missing.
   const siblingDayPct: Record<string, number> = {};
   for (const cfg of SIBLING_CONFIG) {
-    const livePayload = payload.siblings.find((s) => s.ticker === cfg.ticker);
-    if (livePayload?.quote) {
-      siblingDayPct[cfg.ticker] = +livePayload.quote.changePercent.toFixed(2);
-    } else {
-      siblingDayPct[cfg.ticker] = MOCK_TODAY_SIBLING_PCT[cfg.ticker] ?? 0;
-    }
+    const live = payload.siblings.find((s) => s.ticker === cfg.ticker);
+    siblingBars[cfg.ticker] =
+      live?.history && live.history.data.length > 0
+        ? payloadHistoryToBars(live.history)
+        : [];
+    siblingDayPct[cfg.ticker] = live?.quote
+      ? +live.quote.changePercent.toFixed(2)
+      : 0;
   }
 
   return assemble({
@@ -991,6 +970,29 @@ export function buildLiveDataset(payload: DashboardPayload): Dataset {
     isLive: true,
     fetchedAt: payload.fetchedAt,
   });
+}
+
+/**
+ * A zeroed-out payload, useful when the server-side fetch returned null
+ * entirely (Yahoo unreachable + no cache). The resulting Dataset has no
+ * bars and a zero PriceShape; consumers render their empty states.
+ */
+export function emptyPayload(): DashboardPayload {
+  return {
+    fetchedAt: new Date().toISOString(),
+    cage: {
+      ticker: "CAGE",
+      fullName: CAGE_META.name,
+      quote: null,
+      history: null,
+    },
+    siblings: SIBLING_CONFIG.map((c) => ({
+      ticker: c.ticker,
+      fullName: c.name,
+      quote: null,
+      history: null,
+    })),
+  };
 }
 
 // ─── back-compat module-level exports ────────────────────────────────────────

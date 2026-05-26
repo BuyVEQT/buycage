@@ -2,19 +2,20 @@
 
 import dynamic from "next/dynamic";
 import type { DashboardPayload } from "@/lib/data/fetchDashboard";
-import { buildLiveDataset, buildMockDataset } from "./data";
+import { buildLiveDataset, emptyPayload } from "./data";
 import { DatasetProvider } from "./dataset";
 
-// Overview is loaded client-only so Recharts ResponsiveContainer has real DOM
-// dimensions. Server fetches the data; this wrapper transforms it into the
-// Dataset shape and threads it through context.
 const Overview = dynamic(
   () => import("./Overview").then((m) => m.Overview),
   { ssr: false }
 );
 
 export function OverviewClient({ live }: { live: DashboardPayload | null }) {
-  const dataset = live ? buildLiveDataset(live) : buildMockDataset();
+  // Always go through buildLiveDataset — no synthesised mock fallback.
+  // If the server-side fetch returned null (Yahoo down + cache miss),
+  // emptyPayload() yields a dataset full of zeroes / empty arrays and the
+  // UI renders its own empty states.
+  const dataset = buildLiveDataset(live ?? emptyPayload());
   return (
     <DatasetProvider value={dataset}>
       <Overview />

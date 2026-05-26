@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { DashboardPayload } from "@/lib/data/fetchDashboard";
-import { buildLiveDataset, buildMockDataset } from "../overview/data";
+import { buildLiveDataset, emptyPayload } from "../overview/data";
 import { DatasetProvider } from "../overview/dataset";
 
 const InsideCage = dynamic(
@@ -11,7 +11,7 @@ const InsideCage = dynamic(
 );
 
 export function InsideClient({ live }: { live: DashboardPayload | null }) {
-  const dataset = live ? buildLiveDataset(live) : buildMockDataset();
+  const dataset = buildLiveDataset(live ?? emptyPayload());
   return (
     <DatasetProvider value={dataset}>
       <InsideCage />

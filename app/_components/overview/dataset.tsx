@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import { buildMockDataset, type Dataset } from "./data";
+import { buildLiveDataset, emptyPayload, type Dataset } from "./data";
 
-// Eager fallback so a forgotten provider still renders something rather
-// than throwing at runtime in dev.
-const FALLBACK_DATASET = buildMockDataset();
+// Fallback for any consumer that renders outside a provider. Empty dataset
+// (no bars, zero prices) — components render their own empty states rather
+// than mock data.
+const FALLBACK_DATASET: Dataset = buildLiveDataset(emptyPayload());
 
 const DatasetContext = createContext<Dataset>(FALLBACK_DATASET);
 
