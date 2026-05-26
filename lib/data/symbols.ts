@@ -1,5 +1,5 @@
 // Best-guess Yahoo tickers for CAGE + its five sibling Avantis CIBC ETFs.
-// Cboe Canada / NEO tickers use the `.NE` suffix on Yahoo. If a symbol
+// Cboe Canada / NEO tickers use the `.TO` suffix on Yahoo. If a symbol
 // returns nothing, the plumbing fails soft (null → cache → null).
 
 export interface SymbolConfig {
@@ -15,27 +15,27 @@ export const SYMBOLS: Record<string, SymbolConfig> = {
     fullName: "Avantis CIBC All-Equity Asset Allocation ETF",
   },
   AVUS: {
-    yahoo: "AVUS.NE",
+    yahoo: "AVUS.TO",
     displayName: "AVUS",
     fullName: "Avantis CIBC US Equity ETF",
   },
   AVDE: {
-    yahoo: "AVDE.NE",
+    yahoo: "AVDE.TO",
     displayName: "AVDE",
     fullName: "Avantis CIBC International Equity ETF",
   },
   AVEM: {
-    yahoo: "AVEM.NE",
+    yahoo: "AVEM.TO",
     displayName: "AVEM",
     fullName: "Avantis CIBC Emerging Markets Equity ETF",
   },
   AVCA: {
-    yahoo: "AVCA.NE",
+    yahoo: "AVCA.TO",
     displayName: "AVCA",
     fullName: "Avantis CIBC Canadian Equity ETF",
   },
   AVSC: {
-    yahoo: "AVSC.NE",
+    yahoo: "AVSC.TO",
     displayName: "AVSC",
     fullName: "Avantis CIBC US Small Cap Value ETF",
   },
