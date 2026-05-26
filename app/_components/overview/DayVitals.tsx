@@ -343,12 +343,12 @@ function CageGlyph({
           opacity="0.06"
         />
 
+        {/* Use the SVG transform attribute (not CSS transform) so positions
+            work consistently across browsers. CSS `transformBox: fill-box`
+            on an SVG <g> renders inconsistently on Chrome desktop and was
+            putting the orb at (0,0). */}
         <g
-          style={{
-            transform: `translate(${cx + orbSwing}px, ${orbY + orbBob}px) scale(${orbPulse})`,
-            transformBox: "fill-box",
-            transformOrigin: "center",
-          }}
+          transform={`translate(${cx + orbSwing} ${orbY + orbBob}) scale(${orbPulse})`}
         >
           <circle r="14" fill="url(#orbGrad)" />
           <circle
@@ -391,11 +391,7 @@ function CageGlyph({
                 fontStyle="italic"
                 fill="var(--fg-tertiary)"
                 opacity={p.op}
-                style={{
-                  transform: `scale(${p.scale})`,
-                  transformBox: "fill-box",
-                  transformOrigin: `${p.x}px ${p.y}px`,
-                }}
+                transform={`translate(${p.x * (1 - p.scale)} ${p.y * (1 - p.scale)}) scale(${p.scale})`}
               >
                 z
               </text>
@@ -602,10 +598,8 @@ function BellCurve({
         ))}
 
         <g
-          style={{
-            transform: `translate(${pinX}px, ${dropOffset}px)`,
-            opacity: dropProgress,
-          }}
+          transform={`translate(${pinX} ${dropOffset})`}
+          opacity={dropProgress}
         >
           <line
             x1="0"

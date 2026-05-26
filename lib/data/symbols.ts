@@ -1,7 +1,7 @@
 // Real Avantis CIBC ETF tickers pulled from the CAGE fact sheet
 // (cibc-fund-snapshot-cage-en.pdf, dated April 2026).
 //
-// Trying `.NE` first since that's what worked for CAGE on Yahoo. If a
+// Trying `.TO` first since that's what worked for CAGE on Yahoo. If a
 // sibling 404s, fall back to `.TO`.
 
 export interface SymbolConfig {
@@ -12,32 +12,32 @@ export interface SymbolConfig {
 
 export const SYMBOLS: Record<string, SymbolConfig> = {
   CAGE: {
-    yahoo: "CAGE.NE",
+    yahoo: "CAGE.TO",
     displayName: "CAGE",
     fullName: "Avantis CIBC All-Equity Asset Allocation ETF",
   },
   CAUS: {
-    yahoo: "CAUS.NE",
+    yahoo: "CAUS.TO",
     displayName: "CAUS",
     fullName: "Avantis CIBC U.S. All-Cap Equity ETF",
   },
   CACE: {
-    yahoo: "CACE.NE",
+    yahoo: "CACE.TO",
     displayName: "CACE",
     fullName: "Avantis CIBC Canadian Equity ETF",
   },
   CADE: {
-    yahoo: "CADE.NE",
+    yahoo: "CADE.TO",
     displayName: "CADE",
     fullName: "Avantis CIBC International Equity ETF",
   },
   CASV: {
-    yahoo: "CASV.NE",
+    yahoo: "CASV.TO",
     displayName: "CASV",
     fullName: "Avantis CIBC Global Small Cap Value ETF",
   },
   CAEM: {
-    yahoo: "CAEM.NE",
+    yahoo: "CAEM.TO",
     displayName: "CAEM",
     fullName: "Avantis CIBC Emerging Markets Equity ETF",
   },
