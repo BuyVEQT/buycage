@@ -1,1 +1,191 @@
 @import "tailwindcss";
+
+/* ─── Design tokens ────────────────────────────────────────────────────────── */
+:root {
+  --font-sans: var(--next-font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--next-font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-serif: var(--next-font-instrument-serif), ui-serif, Georgia, serif;
+  --accent: #b8843d;
+  --gain: #2f7a3a;
+  --loss: #b6361c;
+
+  --slice-intl: #6b7da3;
+  --slice-em: #a8703e;
+  --slice-ca: #4f7d68;
+  --slice-sc: #8a857a;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Light — warm editorial paper */
+html[data-theme="light"] {
+  --bg: #f7f5f0;
+  --surface-1: #fdfcf8;
+  --surface-2: #efece4;
+  --border: #e2ddd0;
+  --border-strong: #cdc6b3;
+  --fg: #1a1916;
+  --fg-secondary: #4a4842;
+  --fg-tertiary: #8a857a;
+  --gain: #2f7a3a;
+  --loss: #b6361c;
+  --slice-intl: #6b7da3;
+  --slice-em: #a8703e;
+  --slice-ca: #4f7d68;
+  --slice-sc: #8a857a;
+}
+
+/* Dark */
+html[data-theme="dark"] {
+  --bg: #0a0a0b;
+  --surface-1: #111114;
+  --surface-2: #17171b;
+  --border: #1f1f25;
+  --border-strong: #2a2a32;
+  --fg: #f4f4f5;
+  --fg-secondary: #c8c8cd;
+  --fg-tertiary: #7a7a85;
+  --gain: #34d399;
+  --loss: #f87171;
+  --slice-intl: #8a9bbf;
+  --slice-em: #c08866;
+  --slice-ca: #6f9b85;
+  --slice-sc: #585864;
+}
+
+html,
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11", "tnum";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg);
+  color: var(--fg);
+}
+body {
+  margin: 0;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Recharts surface */
+.recharts-default-tooltip {
+  background: transparent !important;
+  border: 0 !important;
+}
+.recharts-surface {
+  overflow: visible;
+}
+.recharts-cartesian-axis-line {
+  stroke: var(--border);
+}
+
+/* Text selection */
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--fg);
+}
+
+/* Card */
+.card {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+}
+.card-pad {
+  padding: 20px;
+}
+
+/* Subtle fade-in on scroll-into-view */
+.reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Tabular figures for all numeric content */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Custom scrollbars */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+/* Soft section header */
+.h-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-tertiary);
+}
+.h-title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+
+/* Pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--fg-secondary);
+}
+.pill[data-tone="gain"] {
+  color: var(--gain);
+  border-color: color-mix(in srgb, var(--gain) 28%, var(--border));
+  background: color-mix(in srgb, var(--gain) 8%, var(--surface-1));
+}
+.pill[data-tone="loss"] {
+  color: var(--loss);
+  border-color: color-mix(in srgb, var(--loss) 28%, var(--border));
+  background: color-mix(in srgb, var(--loss) 8%, var(--surface-1));
+}
+.pill[data-tone="muted"] {
+  color: var(--fg-tertiary);
+}
+
+/* Mobile header compress */
+.hdr-shrink .wordmark-tag {
+  display: none;
+}
+
+/* Drawer (footer methodology) */
+.drawer-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 500ms var(--ease-in-out);
+}
+.drawer-content[data-open="true"] {
+  max-height: 800px;
+}
