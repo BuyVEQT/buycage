@@ -67,7 +67,7 @@ function LeaderCard({
   const swatch = sibPalette[s.color];
   return (
     <Link
-      href="/inside"
+      href={`/fund/${s.ticker}`}
       className={`card card-pad relative flex flex-col min-h-[280px] ${HOVER_CARD}`}
     >
       {/* Top row */}
@@ -154,7 +154,7 @@ function RankedCard({
   const color = isGain ? "var(--gain)" : "var(--loss)";
   return (
     <Link
-      href="/inside"
+      href={`/fund/${s.ticker}`}
       className={`card flex items-center gap-4 px-4 py-3.5 ${HOVER_CARD}`}
     >
       {/* Rank + identity */}
