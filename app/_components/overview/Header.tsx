@@ -9,9 +9,12 @@ import { IconMoon, IconSun } from "./icons";
 export function useNow() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    setNow(new Date());
+    const prime = window.setTimeout(() => setNow(new Date()), 0);
     const id = setInterval(() => setNow(new Date()), 30 * 1000);
-    return () => clearInterval(id);
+    return () => {
+      window.clearTimeout(prime);
+      clearInterval(id);
+    };
   }, []);
   return now;
 }
@@ -113,80 +116,101 @@ export function Header({
   const isGain = PRICE.dayChange >= 0;
 
   return (
-    <header
-      className={
-        "sticky top-0 z-40 backdrop-blur-md border-b transition-all duration-300 " +
-        (compressed ? "hdr-shrink" : "")
-      }
-      style={{
-        background: "color-mix(in srgb, var(--bg) 88%, transparent)",
-        borderColor: compressed ? "var(--border)" : "transparent",
-        height: compressed ? 48 : 56,
-      }}
-    >
-      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
-        <div className="flex items-center gap-4 sm:gap-6">
-          <Wordmark compact={compressed} />
-          <nav className="hidden md:flex items-center gap-5 text-[12.5px]">
-            {NAV_ITEMS.map((item) => {
-              const isActive = item.key === active;
-              return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className={
-                    isActive
-                      ? "text-[var(--fg)] font-medium relative"
-                      : "text-[var(--fg-tertiary)] hover:text-[var(--fg-secondary)] transition-colors"
-                  }
-                >
-                  {item.label}
-                  {isActive && (
-                    <span
-                      className="absolute -bottom-[6px] left-0 right-0 h-[2px] rounded-full"
-                      style={{ background: "var(--accent)" }}
-                    />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-          <div
-            className="hidden md:flex items-center gap-2 text-[12px] num pl-4 ml-2 border-l border-[var(--border)] transition-opacity"
-            style={{
-              opacity: compressed ? 1 : 0,
-              pointerEvents: compressed ? "auto" : "none",
-            }}
-          >
-            <span className="font-mono text-[var(--fg-tertiary)]">CAGE</span>
-            <span className="text-[var(--fg)]">${PRICE.current.toFixed(2)}</span>
-            <span
-              className={
-                isGain ? "text-[var(--gain)]" : "text-[var(--loss)]"
-              }
+    <>
+      <header
+        className={
+          "sticky top-0 z-40 backdrop-blur-md border-b transition-all duration-300 " +
+          (compressed ? "hdr-shrink" : "")
+        }
+        style={{
+          background: "color-mix(in srgb, var(--bg) 88%, transparent)",
+          borderColor: compressed ? "var(--border)" : "transparent",
+          height: compressed ? 48 : 56,
+        }}
+      >
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Wordmark compact={compressed} />
+            <nav className="hidden md:flex items-center gap-5 text-[12.5px]">
+              {NAV_ITEMS.map((item) => {
+                const isActive = item.key === active;
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={
+                      isActive
+                        ? "text-[var(--fg)] font-medium relative"
+                        : "text-[var(--fg-tertiary)] hover:text-[var(--fg-secondary)] transition-colors"
+                    }
+                  >
+                    {item.label}
+                    {isActive && (
+                      <span
+                        className="absolute -bottom-[6px] left-0 right-0 h-[2px] rounded-full"
+                        style={{ background: "var(--accent)" }}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+            <div
+              className="hidden md:flex items-center gap-2 text-[12px] num pl-4 ml-2 border-l border-[var(--border)] transition-opacity"
+              style={{
+                opacity: compressed ? 1 : 0,
+                pointerEvents: compressed ? "auto" : "none",
+              }}
             >
-              {isGain ? "+" : ""}
-              {PRICE.dayChangePct.toFixed(2)}%
-            </span>
+              <span className="font-mono text-[var(--fg-tertiary)]">CAGE</span>
+              <span className="text-[var(--fg)]">${PRICE.current.toFixed(2)}</span>
+              <span
+                className={
+                  isGain ? "text-[var(--gain)]" : "text-[var(--loss)]"
+                }
+              >
+                {isGain ? "+" : ""}
+                {PRICE.dayChangePct.toFixed(2)}%
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <StatusPill status={status} />
+            {stamp && (
+              <span className="hidden sm:inline text-[11px] text-[var(--fg-tertiary)] num">
+                {stamp}
+              </span>
+            )}
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="w-8 h-8 rounded-md hover:bg-[var(--surface-1)] flex items-center justify-center text-[var(--fg-secondary)] transition-colors"
+              title="Toggle theme"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <StatusPill status={status} />
-          {stamp && (
-            <span className="hidden sm:inline text-[11px] text-[var(--fg-tertiary)] num">
-              {stamp}
-            </span>
-          )}
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-8 h-8 rounded-md hover:bg-[var(--surface-1)] flex items-center justify-center text-[var(--fg-secondary)] transition-colors"
-            title="Toggle theme"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
-          </button>
-        </div>
-      </div>
-    </header>
+      </header>
+      <nav className="md:hidden fixed left-3 right-3 bottom-3 z-50 grid grid-cols-3 gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-1)]/95 p-1 shadow-lg backdrop-blur-md">
+        {NAV_ITEMS.map((item) => {
+          const isActive = item.key === active;
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={
+                "flex h-9 items-center justify-center rounded-md text-[11.5px] font-medium transition-colors " +
+                (isActive
+                  ? "bg-[var(--surface-2)] text-[var(--fg)]"
+                  : "text-[var(--fg-tertiary)] hover:text-[var(--fg-secondary)]")
+              }
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

@@ -134,7 +134,7 @@ export function MoneyFlow() {
     };
     const out = layout(graph);
     return { nodes: out.nodes, links: out.links };
-  }, []);
+  }, [REGION_OF_ETF, SIBLINGS, SIB_PALETTE]);
 
   const linkGen = sankeyLinkHorizontal();
   const presets = [1_000, 10_000, 50_000, 250_000];

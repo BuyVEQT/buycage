@@ -113,7 +113,6 @@ function MiniDonut() {
   const cy = size / 2;
   const r0 = 18;
   const r1 = 42;
-  let acc = -Math.PI / 2;
   const COLORS: Record<string, string> = {
     us: "var(--accent)",
     intl: "var(--slice-intl)",
@@ -132,13 +131,20 @@ function MiniDonut() {
     return { d, color };
   }
 
-  const wedges = SIBLINGS.map((s) => {
-    const span = s.cageWeight * Math.PI * 2;
-    const a0 = acc,
-      a1 = acc + span;
-    acc = a1;
-    return arc(a0, a1, COLORS[s.color]);
-  });
+  const wedges = SIBLINGS.reduce<
+    { acc: number; wedges: { d: string; color: string }[] }
+  >(
+    (state, s) => {
+      const span = s.cageWeight * Math.PI * 2;
+      const a0 = state.acc;
+      const a1 = a0 + span;
+      return {
+        acc: a1,
+        wedges: [...state.wedges, arc(a0, a1, COLORS[s.color])],
+      };
+    },
+    { acc: -Math.PI / 2, wedges: [] }
+  ).wedges;
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={96} height={96}>

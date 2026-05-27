@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useDataset } from "./dataset";
 import { RangeBar } from "./RangeBar";
@@ -80,6 +80,7 @@ export function Sparkline({
    *  `width`/`height` numbers are still used as the internal coord system. */
   responsive?: boolean;
 }) {
+  const gid = useId().replace(/:/g, "");
   if (!data || !data.length) return null;
   const xs = data.map((d) => d.t);
   const ys = data.map((d) => d.price);
@@ -98,7 +99,6 @@ export function Sparkline({
     .map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(2) + "," + p[1].toFixed(2))
     .join(" ");
   const area = path + ` L ${width},${height} L 0,${height} Z`;
-  const gid = "spk" + Math.random().toString(36).slice(2, 8);
   const svgProps = responsive
     ? {
         viewBox: `0 0 ${width} ${height}`,

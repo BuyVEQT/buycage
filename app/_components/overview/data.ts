@@ -21,6 +21,15 @@ export type Bar = {
 };
 
 export type SeriesPoint = { t: number; price: number };
+export type ComparisonPoint = { t: number; price: number | null };
+
+export type ComparisonSeries = {
+  ticker: "VEQT" | "XEQT";
+  label: string;
+  name: string;
+  color: string;
+  series: Record<string, ComparisonPoint[]>;
+};
 
 export type SiblingColor = "us" | "intl" | "em" | "ca" | "smallcap";
 
@@ -239,6 +248,21 @@ export const SIB_PALETTE: Record<SiblingColor, string> = {
   smallcap: "var(--slice-sc)",
 };
 
+const COMPARISON_CONFIG: Omit<ComparisonSeries, "series">[] = [
+  {
+    ticker: "VEQT",
+    label: "VEQT",
+    name: "Vanguard All-Equity ETF Portfolio",
+    color: "#5f7698",
+  },
+  {
+    ticker: "XEQT",
+    label: "XEQT",
+    name: "iShares Core Equity ETF Portfolio",
+    color: "#8f7558",
+  },
+];
+
 // ─── PRNG ────────────────────────────────────────────────────────────────────
 function mulberry32(seed: number) {
   return function (): number {
@@ -406,6 +430,53 @@ function buildBenchmark(seriesMap: Record<string, SeriesPoint[]>) {
     "1Y": benchmarkOf(seriesMap["1Y"], { seed: 666, drag: 0.01 }),
     ALL: benchmarkOf(seriesMap.ALL, { seed: 777, drag: 0.01 }),
   } as Record<string, SeriesPoint[]>;
+}
+
+function normalizeComparisonToFund(
+  comparisonBars: Bar[],
+  fundSeries: SeriesPoint[]
+): ComparisonPoint[] {
+  if (!comparisonBars.length || !fundSeries.length) return [];
+  const byTime = new Map(comparisonBars.map((bar) => [bar.t, bar.close]));
+  const firstMatch = fundSeries.find((pt) => byTime.has(pt.t));
+  if (!firstMatch) {
+    return fundSeries.map((pt) => ({ t: pt.t, price: null }));
+  }
+
+  const comparisonStart = byTime.get(firstMatch.t);
+  if (!comparisonStart) {
+    return fundSeries.map((pt) => ({ t: pt.t, price: null }));
+  }
+
+  const scale = firstMatch.price / comparisonStart;
+  return fundSeries.map((pt) => {
+    const comparisonClose = byTime.get(pt.t);
+    return {
+      t: pt.t,
+      price:
+        comparisonClose == null ? null : +(comparisonClose * scale).toFixed(4),
+    };
+  });
+}
+
+function buildComparisons(
+  comparisonBars: Record<string, Bar[]>,
+  seriesMap: Record<string, SeriesPoint[]>
+): ComparisonSeries[] {
+  return COMPARISON_CONFIG.map((comparison) => ({
+    ...comparison,
+    series: Object.fromEntries(
+      Object.entries(seriesMap).map(([tf, series]) => [
+        tf,
+        tf === "1D"
+          ? []
+          : normalizeComparisonToFund(
+              comparisonBars[comparison.ticker] ?? [],
+              series
+            ),
+      ])
+    ) as Record<string, ComparisonPoint[]>,
+  }));
 }
 
 function drawdownSeries(bars: Bar[]): SeriesPoint[] {
@@ -795,6 +866,7 @@ export type Dataset = {
   SIBLING_BARS: Record<string, Bar[]>;
   SERIES: Record<string, SeriesPoint[]>;
   BENCHMARK: Record<string, SeriesPoint[]>;
+  COMPARISONS: ComparisonSeries[];
   DRAWDOWN: Record<string, SeriesPoint[]>;
   ROLLING30: Record<string, { t: number; price: number | null }[]>;
   EFFECTIVE_HOLDINGS: EffectiveHolding[];
@@ -817,6 +889,7 @@ function assemble(opts: {
   cageBars: Bar[];
   siblingBars: Record<string, Bar[]>;
   siblingDayPct: Record<string, number>;
+  comparisonBars: Record<string, Bar[]>;
   cageQuoteOverride?: DashboardPayload["cage"]["quote"];
   today: Date;
   isLive: boolean;
@@ -847,6 +920,7 @@ function assemble(opts: {
 
   const series = buildSeries(cageBars, today, intraday);
   const benchmark = buildBenchmark(series);
+  const comparisons = buildComparisons(opts.comparisonBars, series);
   const drawdown = buildDrawdown(cageBars, today);
   const rolling30 = buildRolling30(cageBars, today);
   const directions = buildDayDirections(cageBars);
@@ -865,6 +939,7 @@ function assemble(opts: {
     SIBLING_BARS: siblingBars,
     SERIES: series,
     BENCHMARK: benchmark,
+    COMPARISONS: comparisons,
     DRAWDOWN: drawdown,
     ROLLING30: rolling30,
     EFFECTIVE_HOLDINGS: effective,
@@ -928,6 +1003,7 @@ export function buildMockDataset(refDate?: Date): Dataset {
     cageBars,
     siblingBars,
     siblingDayPct: MOCK_TODAY_SIBLING_PCT,
+    comparisonBars: {},
     today,
     isLive: false,
     fetchedAt: null,
@@ -961,10 +1037,20 @@ export function buildLiveDataset(payload: DashboardPayload): Dataset {
       : 0;
   }
 
+  const comparisonBars: Record<string, Bar[]> = {};
+  for (const cfg of COMPARISON_CONFIG) {
+    const live = payload.comparisons.find((s) => s.ticker === cfg.ticker);
+    comparisonBars[cfg.ticker] =
+      live?.history && live.history.data.length > 0
+        ? payloadHistoryToBars(live.history)
+        : [];
+  }
+
   return assemble({
     cageBars,
     siblingBars,
     siblingDayPct,
+    comparisonBars,
     cageQuoteOverride: payload.cage.quote,
     today,
     isLive: true,
@@ -992,6 +1078,12 @@ export function emptyPayload(): DashboardPayload {
       quote: null,
       history: null,
     })),
+    comparisons: COMPARISON_CONFIG.map((c) => ({
+      ticker: c.ticker,
+      fullName: c.name,
+      quote: null,
+      history: null,
+    })),
   };
 }
 
@@ -1005,6 +1097,7 @@ export const SIBLINGS = __MOCK.SIBLINGS;
 export const SIBLING_BARS = __MOCK.SIBLING_BARS;
 export const SERIES = __MOCK.SERIES;
 export const BENCHMARK = __MOCK.BENCHMARK;
+export const COMPARISONS = __MOCK.COMPARISONS;
 export const DRAWDOWN = __MOCK.DRAWDOWN;
 export const ROLLING30 = __MOCK.ROLLING30;
 export const EFFECTIVE_HOLDINGS = __MOCK.EFFECTIVE_HOLDINGS;

@@ -67,6 +67,12 @@ body {
   margin: 0;
 }
 
+@media (max-width: 767px) {
+  body {
+    padding-bottom: 64px;
+  }
+}
+
 .font-mono {
   font-family: var(--font-mono);
 }

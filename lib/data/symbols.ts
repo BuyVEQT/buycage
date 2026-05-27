@@ -41,6 +41,19 @@ export const SYMBOLS: Record<string, SymbolConfig> = {
     displayName: "CAEM",
     fullName: "Avantis CIBC Emerging Markets Equity ETF",
   },
+  VEQT: {
+    yahoo: "VEQT.TO",
+    displayName: "VEQT",
+    fullName: "Vanguard All-Equity ETF Portfolio",
+  },
+  XEQT: {
+    yahoo: "XEQT.TO",
+    displayName: "XEQT",
+    fullName: "iShares Core Equity ETF Portfolio",
+  },
 };
 
+export const CAGE_SYMBOL = "CAGE";
+export const SIBLING_SYMBOLS = ["CAUS", "CACE", "CADE", "CASV", "CAEM"] as const;
+export const COMPARISON_SYMBOLS = ["VEQT", "XEQT"] as const;
 export const ALLOWED_SYMBOLS = Object.keys(SYMBOLS);

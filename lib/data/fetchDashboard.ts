@@ -4,8 +4,14 @@
 // server/client boundary via props.
 
 import { getDailyHistory, getQuote } from "./market-data";
-import { SYMBOLS } from "./symbols";
+import {
+  CAGE_SYMBOL,
+  COMPARISON_SYMBOLS,
+  SIBLING_SYMBOLS,
+  SYMBOLS,
+} from "./symbols";
 import type { HistoricalData, QuoteData } from "./types";
+import type { HistorySize } from "./market-data";
 
 export type DashboardSymbolPayload = {
   ticker: string;
@@ -18,16 +24,18 @@ export type DashboardPayload = {
   fetchedAt: string;
   cage: DashboardSymbolPayload;
   siblings: DashboardSymbolPayload[];
+  comparisons: DashboardSymbolPayload[];
 };
 
 async function fetchSymbol(
-  ticker: string
+  ticker: string,
+  historySize: HistorySize = "compact"
 ): Promise<DashboardSymbolPayload> {
   const fullName = SYMBOLS[ticker]?.fullName ?? ticker;
   // Independent — let one failing call not kill the rest.
   const [quoteRes, historyRes] = await Promise.allSettled([
     getQuote(ticker),
-    getDailyHistory(ticker, "compact"),
+    getDailyHistory(ticker, historySize),
   ]);
   return {
     ticker,
@@ -38,19 +46,16 @@ async function fetchSymbol(
 }
 
 export async function fetchDashboard(): Promise<DashboardPayload> {
-  // CAGE first key, then siblings in the order configured.
-  const all = Object.keys(SYMBOLS);
-  const cageKey = "CAGE";
-  const siblingKeys = all.filter((k) => k !== cageKey);
-
-  const [cage, ...siblings] = await Promise.all([
-    fetchSymbol(cageKey),
-    ...siblingKeys.map(fetchSymbol),
+  const [cage, siblings, comparisons] = await Promise.all([
+    fetchSymbol(CAGE_SYMBOL, "full"),
+    Promise.all(SIBLING_SYMBOLS.map((ticker) => fetchSymbol(ticker))),
+    Promise.all(COMPARISON_SYMBOLS.map((ticker) => fetchSymbol(ticker, "full"))),
   ]);
 
   return {
     fetchedAt: new Date().toISOString(),
     cage,
     siblings,
+    comparisons,
   };
 }

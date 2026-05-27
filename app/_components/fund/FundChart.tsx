@@ -155,15 +155,14 @@ export function FundChart({
 
   const [tf, setTf] = useState<TF>(defaultTF ?? "1M");
   useEffect(() => {
-    if (!availability[tf] && defaultTF) setTf(defaultTF);
+    if (availability[tf] || !defaultTF) return;
+    const id = window.setTimeout(() => setTf(defaultTF), 0);
+    return () => window.clearTimeout(id);
   }, [availability, tf, defaultTF]);
 
   const data = useMemo(() => {
     return sliceBars(bars, tf).map((b) => ({ t: b.t, price: b.close }));
   }, [bars, tf]);
-
-  const [animKey, setAnimKey] = useState(0);
-  useEffect(() => setAnimKey((k) => k + 1), [tf]);
 
   const yDomain = useMemo<[number, number] | [string, string]>(() => {
     if (!data.length) return ["auto", "auto"];
@@ -205,7 +204,7 @@ export function FundChart({
           </div>
         </div>
       ) : (
-        <div className="h-[280px] -ml-3" key={animKey}>
+        <div className="h-[280px] -ml-3" key={tf}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={data}

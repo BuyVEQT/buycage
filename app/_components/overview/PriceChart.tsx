@@ -13,7 +13,7 @@ import {
   ReferenceLine,
   Line,
 } from "recharts";
-import type { Bar, SeriesPoint } from "./data";
+import type { Bar, ComparisonSeries, SeriesPoint } from "./data";
 import { useDataset } from "./dataset";
 
 const TF_ORDER = ["1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"] as const;
@@ -151,19 +151,18 @@ function ChartTooltip({
   payload,
   label,
   tf,
-  showBench,
   mode,
+  comparisons,
 }: {
   active?: boolean;
   payload?: TooltipPayload;
   label?: number;
   tf: TF;
-  showBench: boolean;
   mode: Mode;
+  comparisons: ComparisonSeries[];
 }) {
   if (!active || !payload || !payload.length || label == null) return null;
   const fundPt = payload.find((p) => p.dataKey === "price");
-  const benchPt = payload.find((p) => p.dataKey === "bench");
   const fmt =
     mode === "price"
       ? (v: number) => `$${fmtMoneyC(v)}`
@@ -187,22 +186,38 @@ function ChartTooltip({
           </span>
         </div>
       )}
-      {showBench && benchPt && benchPt.value != null && mode === "price" && (
-        <div className="flex items-center justify-between gap-4 mt-0.5">
-          <span className="flex items-center gap-1.5 text-[var(--fg-secondary)]">
-            <span className="inline-block w-2 h-2 rounded-full bg-[var(--fg-tertiary)]" />
-            ACWI IMI
-          </span>
-          <span className="font-medium num text-[var(--fg-secondary)]">
-            ${fmtMoneyC(benchPt.value)}
-          </span>
-        </div>
-      )}
+      {mode === "price" &&
+        comparisons.map((comparison) => {
+          const point = payload.find((p) => p.dataKey === comparison.ticker);
+          if (!point || point.value == null) return null;
+          return (
+            <div
+              key={comparison.ticker}
+              className="flex items-center justify-between gap-4 mt-0.5"
+            >
+              <span className="flex items-center gap-1.5 text-[var(--fg-secondary)]">
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{ background: comparison.color }}
+                />
+                {comparison.label}
+              </span>
+              <span className="font-medium num text-[var(--fg-secondary)]">
+                {fmt(point.value)}
+              </span>
+            </div>
+          );
+        })}
     </div>
   );
 }
 
-type ChartRow = { t: number; price: number | null; bench: number | null };
+type ChartRow = {
+  t: number;
+  price: number | null;
+  VEQT?: number | null;
+  XEQT?: number | null;
+};
 
 /** True if this TF has enough real history to be meaningful. */
 function tfAvailable(
@@ -217,7 +232,7 @@ function tfAvailable(
 }
 
 export function PriceChart() {
-  const { PRICE, SERIES, BENCHMARK, DRAWDOWN, ROLLING30, CAGE_BARS } =
+  const { PRICE, SERIES, COMPARISONS, DRAWDOWN, ROLLING30, CAGE_BARS } =
     useDataset();
 
   // Which timeframes have enough underlying data to render.
@@ -249,25 +264,42 @@ export function PriceChart() {
   // If the currently-selected TF becomes unavailable (e.g. data changed),
   // snap back to whatever the best available is.
   useEffect(() => {
-    if (!availability[tf] && defaultTF) setTf(defaultTF);
+    if (availability[tf] || !defaultTF) return;
+    const id = window.setTimeout(() => setTf(defaultTF), 0);
+    return () => window.clearTimeout(id);
   }, [availability, tf, defaultTF]);
 
-  const [showBench, setShowBench] = useState(false);
+  const [activeComparisons, setActiveComparisons] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("price");
+
+  const visibleComparisons = useMemo(
+    () =>
+      COMPARISONS.filter((comparison) =>
+        activeComparisons.includes(comparison.ticker)
+      ),
+    [COMPARISONS, activeComparisons]
+  );
 
   const data: ChartRow[] = useMemo(() => {
     if (mode === "price") {
       const series = SERIES[tf];
-      const bench = BENCHMARK[tf];
       if (!series || series.length === 0) return [];
-      const fundStart = series[0].price;
-      const benchStart = bench?.[0]?.price;
-      const scale = benchStart ? fundStart / benchStart : 1;
-      return series.map((pt, i) => ({
-        t: pt.t,
-        price: pt.price,
-        bench: bench?.[i] ? +(bench[i].price * scale).toFixed(4) : null,
-      }));
+      const comparisonMaps = Object.fromEntries(
+        visibleComparisons.map((comparison) => [
+          comparison.ticker,
+          new Map(
+            (comparison.series[tf] ?? []).map((pt) => [pt.t, pt.price])
+          ),
+        ])
+      ) as Record<string, Map<number, number | null>>;
+      return series.map((pt) => {
+        const row: ChartRow = { t: pt.t, price: pt.price };
+        for (const comparison of visibleComparisons) {
+          row[comparison.ticker] =
+            comparisonMaps[comparison.ticker]?.get(pt.t) ?? null;
+        }
+        return row;
+      });
     }
     if (mode === "drawdown") {
       const tfKey: TF = tf === "1D" || tf === "1W" ? "1M" : tf;
@@ -289,7 +321,7 @@ export function PriceChart() {
         .map((pt) => ({ t: pt.t, price: pt.price, bench: null }));
     }
     return [];
-  }, [tf, mode, SERIES, BENCHMARK, DRAWDOWN, ROLLING30]);
+  }, [tf, mode, SERIES, visibleComparisons, DRAWDOWN, ROLLING30]);
 
   const prev = PRICE.prevClose;
   const isGain = PRICE.dayChange >= 0;
@@ -305,7 +337,10 @@ export function PriceChart() {
   const yDomain = useMemo<[number, number] | [string, string]>(() => {
     if (!data.length) return ["auto", "auto"];
     const all = data
-      .flatMap((d) => [d.price, d.bench])
+      .flatMap((d) => [
+        d.price,
+        ...visibleComparisons.map((comparison) => d[comparison.ticker]),
+      ])
       .filter((v): v is number => v != null);
     if (!all.length) return ["auto", "auto"];
     const mn = Math.min(...all);
@@ -319,15 +354,13 @@ export function PriceChart() {
     }
     const pad = (mx - mn) * 0.12 || 0.5;
     return [mn - pad, mx + pad];
-  }, [data, mode]);
-
-  const [animKey, setAnimKey] = useState(0);
-  useEffect(() => {
-    setAnimKey((k) => k + 1);
-  }, [tf, mode]);
+  }, [data, mode, visibleComparisons]);
 
   const yFmt = mode === "price" ? axisFormatPrice : axisFormatPct;
   const zeroLine = mode !== "price";
+  const chartKey = `${tf}-${mode}`;
+  const comparisonHelp =
+    "Comparison lines use daily closes and are normalized to CAGE at the start of the selected range. Since CAGE launched in 2026, older VEQT/XEQT history is intentionally excluded.";
 
   return (
     <section>
@@ -345,8 +378,8 @@ export function PriceChart() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-0.5">
+        <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
+          <div className="flex max-w-full items-center gap-0.5 overflow-x-auto bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-0.5">
             {TF_ORDER.map((k) => {
               const enabled = availability[k];
               return (
@@ -365,19 +398,50 @@ export function PriceChart() {
             })}
           </div>
           {mode === "price" && (
-            <button
-              onClick={() => setShowBench((v) => !v)}
-              className={
-                "flex items-center gap-1.5 px-2.5 h-8 text-[11.5px] font-medium rounded-md border transition-colors " +
-                (showBench
-                  ? "bg-[var(--surface-2)] border-[var(--border-strong)] text-[var(--fg)]"
-                  : "bg-transparent border-[var(--border)] text-[var(--fg-tertiary)] hover:text-[var(--fg-secondary)]")
-              }
-              title="Overlay MSCI ACWI IMI benchmark"
+            <div
+              className="flex flex-wrap items-center gap-1"
+              title={comparisonHelp}
+              aria-label="Compare CAGE to VEQT and XEQT"
             >
-              <span className="inline-block w-3 h-[2px] bg-[var(--fg-tertiary)]" />
-              ACWI&nbsp;IMI
-            </button>
+              <span className="hidden sm:inline text-[11px] text-[var(--fg-tertiary)] mr-1">
+                Compare
+              </span>
+              {COMPARISONS.map((comparison) => {
+                const enabled = (comparison.series[tf] ?? []).some(
+                  (pt) => pt.price != null
+                );
+                const active = activeComparisons.includes(comparison.ticker);
+                return (
+                  <button
+                    key={comparison.ticker}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() =>
+                      setActiveComparisons((current) =>
+                        current.includes(comparison.ticker)
+                          ? current.filter((t) => t !== comparison.ticker)
+                          : [...current, comparison.ticker]
+                      )
+                    }
+                    className={
+                      "flex items-center gap-1.5 px-2.5 h-8 text-[11.5px] font-medium rounded-md border transition-colors " +
+                      (!enabled
+                        ? "opacity-40 cursor-not-allowed bg-transparent border-[var(--border)] text-[var(--fg-tertiary)]"
+                        : active
+                        ? "bg-[var(--surface-2)] border-[var(--border-strong)] text-[var(--fg)]"
+                        : "bg-transparent border-[var(--border)] text-[var(--fg-tertiary)] hover:text-[var(--fg-secondary)]")
+                    }
+                    title={`${comparison.label}: ${comparison.name}. ${comparisonHelp}`}
+                  >
+                    <span
+                      className="inline-block w-3 h-[2px]"
+                      style={{ background: comparison.color }}
+                    />
+                    {comparison.label}
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
@@ -403,7 +467,7 @@ export function PriceChart() {
           </div>
         </div>
       ) : (
-        <div className="h-[300px] -ml-3" key={animKey}>
+        <div className="h-[300px] -ml-3" key={chartKey}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={data}
@@ -444,7 +508,11 @@ export function PriceChart() {
               />
               <Tooltip
                 content={
-                  <ChartTooltip tf={tf} showBench={showBench} mode={mode} />
+                  <ChartTooltip
+                    tf={tf}
+                    mode={mode}
+                    comparisons={visibleComparisons}
+                  />
                 }
                 cursor={{
                   stroke: "var(--fg-tertiary)",
@@ -491,18 +559,21 @@ export function PriceChart() {
                 }}
                 connectNulls
               />
-              {showBench && mode === "price" && (
-                <Line
-                  type="monotone"
-                  dataKey="bench"
-                  stroke="var(--fg-tertiary)"
-                  strokeWidth={1.25}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  isAnimationActive
-                  animationDuration={550}
-                />
-              )}
+              {mode === "price" &&
+                visibleComparisons.map((comparison) => (
+                  <Line
+                    key={comparison.ticker}
+                    type="monotone"
+                    dataKey={comparison.ticker}
+                    stroke={comparison.color}
+                    strokeWidth={1.35}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    connectNulls
+                    isAnimationActive
+                    animationDuration={550}
+                  />
+                ))}
             </ComposedChart>
           </ResponsiveContainer>
         </div>

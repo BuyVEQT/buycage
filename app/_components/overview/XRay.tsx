@@ -41,24 +41,40 @@ export function XRay() {
     r3 = 232;
 
   const layout: SibArc[] = useMemo(() => {
-    let acc = -Math.PI / 2;
-    return SIBLINGS.map((s) => {
-      const span = s.cageWeight * Math.PI * 2;
-      const a0 = acc,
-        a1 = acc + span;
-      acc = a1;
-      const top = [...s.holdings].sort((a, b) => b.weight - a.weight).slice(0, 8);
-      const sumTop = top.reduce((sum, h) => sum + h.weight, 0);
-      let hAcc = a0;
-      const holdArcs = top.map((h) => {
-        const hSpan = (h.weight / sumTop) * span;
-        const a0h = hAcc,
-          a1h = hAcc + hSpan;
-        hAcc = a1h;
-        return { ...h, a0: a0h, a1: a1h, parent: s };
-      });
-      return { sibling: s, a0, a1, holdings: holdArcs };
-    });
+    return SIBLINGS.reduce<{ acc: number; layout: SibArc[] }>(
+      (state, s) => {
+        const span = s.cageWeight * Math.PI * 2;
+        const a0 = state.acc;
+        const a1 = a0 + span;
+        const top = [...s.holdings]
+          .sort((a, b) => b.weight - a.weight)
+          .slice(0, 8);
+        const sumTop = top.reduce((sum, h) => sum + h.weight, 0);
+        const holdArcs = top.reduce<{
+          acc: number;
+          holdings: HoldingArc[];
+        }>(
+          (holdingState, h) => {
+            const hSpan = (h.weight / sumTop) * span;
+            const a0h = holdingState.acc;
+            const a1h = a0h + hSpan;
+            return {
+              acc: a1h,
+              holdings: [
+                ...holdingState.holdings,
+                { ...h, a0: a0h, a1: a1h, parent: s },
+              ],
+            };
+          },
+          { acc: a0, holdings: [] }
+        ).holdings;
+        return {
+          acc: a1,
+          layout: [...state.layout, { sibling: s, a0, a1, holdings: holdArcs }],
+        };
+      },
+      { acc: -Math.PI / 2, layout: [] }
+    ).layout;
   }, [SIBLINGS]);
 
   function effWeight(parent: Sibling, h: Holding): number {
