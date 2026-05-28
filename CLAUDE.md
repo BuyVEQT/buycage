@@ -16,4 +16,4 @@
 - Client wrappers (`*Client.tsx`) build a `Dataset` via `buildLiveDataset(live ?? emptyPayload())` and provide it through `DatasetProvider`.
 - Every consumer reads via `useDataset()`. No component imports runtime values from `./data` directly — only types.
 
-See `.claude/HANDOFF.md` for the full state snapshot, recent commits, open threads, and gotchas.
+See `HANDOFF.md` (repo root) for the full state snapshot, recent commits, open threads, and gotchas.
