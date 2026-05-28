@@ -1,538 +1,505 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Footer } from "../overview/Footer";
-import { Header, useScrollY } from "../overview/Header";
+import { SiteHeader } from "../chrome/SiteHeader";
+import { SiteFooter } from "../chrome/SiteFooter";
+import { useInView } from "../inside/viz";
+import {
+  BUBBLE_COMPANIES,
+  REGION_COLOR,
+  RACE_SERIES,
+  FACTOR_DIALS,
+  H2H_COLS,
+  H2H_NAMES,
+  H2H_ROWS,
+  type Region,
+} from "../editorial";
+import "./why.css";
 
-/**
- * Long-form Why CAGE article. Editorial tone, more vibrant visual
- * treatment than the dashboard — colored section markers, big serif
- * headlines, pull-quotes, stat callouts.
- *
- * Researched from: CIBC factsheet, Avantis whitepapers + Repetto/Wahal
- * paper, Fama-French 2015 / Novy-Marx 2013, AQR (Asness et al. 2015),
- * Rational Reminder Podcast Ep 401 (Repetto + Ebanks), PWL Capital
- * "Five Factor Investing with ETFs", Globe and Mail coverage.
- */
+type Scene = "shelf" | "bubbles" | "race";
+const STEPS: { scene: Scene; mode: "" | "cap" | "tilt" }[] = [
+  { scene: "shelf", mode: "" },
+  { scene: "bubbles", mode: "cap" },
+  { scene: "bubbles", mode: "tilt" },
+  { scene: "race", mode: "" },
+];
 
-function SectionNumber({ n, label }: { n: string; label: string }) {
-  return (
-    <div className="flex items-baseline gap-3 mb-5">
-      <span
-        className="font-serif italic num leading-none"
-        style={{
-          fontSize: "clamp(36px, 4vw, 56px)",
-          color: "var(--accent)",
-          letterSpacing: "-0.02em",
-        }}
-      >
-        {n}
-      </span>
-      <span className="h-eyebrow">{label}</span>
-    </div>
-  );
+// ─── Read-progress bar ────────────────────────────────────────────────────────
+function ReadProgress() {
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      setW(h > 0 ? (window.scrollY / h) * 100 : 0);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return <div className="read-progress" style={{ width: `${w}%` }} />;
 }
 
-function PullQuote({
-  children,
-  cite,
-}: {
-  children: React.ReactNode;
-  cite: string;
-}) {
-  return (
-    <blockquote
-      className="my-10 pl-6 border-l-[3px] py-2"
-      style={{ borderColor: "var(--accent)" }}
-    >
-      <p
-        className="font-serif italic text-[var(--fg)] leading-[1.35]"
-        style={{ fontSize: "clamp(20px, 2.2vw, 28px)" }}
-      >
-        {children}
-      </p>
-      <footer className="mt-3 text-[12px] text-[var(--fg-tertiary)] uppercase tracking-[0.14em]">
-        — {cite}
-      </footer>
-    </blockquote>
-  );
+// ─── Bubble pack (market-cap → CAGE-tilt morph) ───────────────────────────────
+type BubNode = { i: number; x: number; y: number; rCap: number; rTilt: number; rPack: number; popOrder: number; big: boolean; region: Region; tk: string };
+
+function packBubbles(): BubNode[] {
+  const W = 600,
+    H = 600,
+    PAD = 14;
+  const rOf = (w: number) => 7 + Math.sqrt(w) * 30;
+  const nodes: BubNode[] = BUBBLE_COMPANIES.map((c, i) => {
+    const rCap = rOf(c.cap),
+      rTilt = rOf(c.tilt);
+    return { i, x: W / 2, y: H / 2, rCap, rTilt, rPack: Math.max(rCap, rTilt), popOrder: 0, big: false, region: c.region, tk: c.tk };
+  });
+  const order = nodes.slice().sort((a, b) => b.rPack - a.rPack);
+  const GA = Math.PI * (3 - Math.sqrt(5));
+  order.forEach((n, k) => {
+    const rad = 12 + Math.sqrt(k) * 46;
+    const ang = k * GA;
+    n.x = W / 2 + Math.cos(ang) * rad;
+    n.y = H / 2 + Math.sin(ang) * rad;
+  });
+  for (let iter = 0; iter < 240; iter++) {
+    for (let a = 0; a < nodes.length; a++) {
+      const na = nodes[a];
+      na.x += (W / 2 - na.x) * 0.008;
+      na.y += (H / 2 - na.y) * 0.008;
+      for (let b = a + 1; b < nodes.length; b++) {
+        const nb = nodes[b];
+        const dx = nb.x - na.x,
+          dy = nb.y - na.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        const min = na.rPack + nb.rPack + 3;
+        if (d < min) {
+          const push = (min - d) / 2,
+            ux = dx / d,
+            uy = dy / d;
+          na.x -= ux * push;
+          na.y -= uy * push;
+          nb.x += ux * push;
+          nb.y += uy * push;
+        }
+      }
+      na.x = Math.max(na.rPack + PAD, Math.min(W - na.rPack - PAD, na.x));
+      na.y = Math.max(na.rPack + PAD, Math.min(H - na.rPack - PAD, na.y));
+    }
+  }
+  const cx = 300,
+    cy = 300;
+  const byDist = nodes.slice().sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
+  byDist.forEach((n, k) => (n.popOrder = k));
+  nodes.forEach((n) => (n.big = n.rPack > 26));
+  return nodes;
 }
 
-function StatCallout({
-  big,
-  label,
-  tone = "accent",
-}: {
-  big: string;
-  label: string;
-  tone?: "accent" | "gain" | "loss";
-}) {
-  const color =
-    tone === "gain"
-      ? "var(--gain)"
-      : tone === "loss"
-      ? "var(--loss)"
-      : "var(--accent)";
-  return (
-    <div
-      className="card card-pad text-center"
-      style={{
-        background: `color-mix(in srgb, ${color} 8%, var(--surface-1))`,
-        borderColor: `color-mix(in srgb, ${color} 30%, var(--border))`,
-      }}
-    >
-      <div
-        className="font-serif tracking-tight num"
-        style={{
-          fontSize: "clamp(34px, 4vw, 48px)",
-          color,
-          letterSpacing: "-0.02em",
-          lineHeight: 1,
-        }}
-      >
-        {big}
-      </div>
-      <div className="text-[12px] text-[var(--fg-secondary)] mt-2 leading-snug">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function Citation({ n, href, children }: { n: number; href: string; children: React.ReactNode }) {
-  return (
-    <li className="flex gap-3">
-      <span className="font-mono text-[10px] text-[var(--fg-tertiary)] num mt-1 min-w-[24px]">
-        [{n}]
-      </span>
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="text-[13px] text-[var(--fg-secondary)] hover:text-[var(--accent)] transition-colors underline decoration-[var(--border-strong)] underline-offset-2 hover:decoration-[var(--accent)]"
-      >
-        {children}
-      </a>
-    </li>
-  );
-}
-
-const PROSE = "text-[15.5px] text-[var(--fg-secondary)] leading-[1.65] [&>p]:mb-4 [&_strong]:text-[var(--fg)] [&_em]:italic [&_a]:text-[var(--accent)] [&_a]:underline [&_a]:decoration-[color-mix(in_srgb,var(--accent)_40%,transparent)] [&_a]:underline-offset-2";
-
-export function Why() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const scrollY = useScrollY();
-  const compressed = scrollY > 60;
+function Bubbles({ mode }: { mode: "" | "cap" | "tilt" | null }) {
+  const nodes = useMemo(() => packBubbles(), []);
+  const circleRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const textRefs = useRef<(SVGTextElement | null)[]>([]);
+  const prevMode = useRef<string | null>(null);
+  const rafRef = useRef(0);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    if (!mode) return;
+    const firstPop = prevMode.current === null;
+    prevMode.current = mode;
+    const targets = nodes.map((n) => (mode === "tilt" ? n.rTilt : n.rCap));
+    const start = nodes.map((_, i) => parseFloat(circleRefs.current[i]?.getAttribute("r") || "0"));
+    const t0 = performance.now(),
+      dur = firstPop ? 560 : 750;
+    const stagPer = firstPop ? 16 : 7;
+    const maxStag = stagPer * (nodes.length - 1);
+    const backOut = (t: number) => {
+      const c = 1.9,
+        u = t - 1;
+      return 1 + (c + 1) * u * u * u + c * u * u;
+    };
+    const ease = (t: number) => (firstPop ? backOut(t) : 1 - Math.pow(1 - t, 3));
+    cancelAnimationFrame(rafRef.current);
+    const tick = (now: number) => {
+      const elapsed = now - t0;
+      nodes.forEach((n, i) => {
+        const delay = (firstPop ? n.popOrder : i) * stagPer;
+        const lt = Math.max(0, Math.min(1, (elapsed - delay) / dur));
+        const k = ease(lt);
+        const r = start[i] + (targets[i] - start[i]) * k;
+        const el = circleRefs.current[i];
+        if (el) {
+          el.setAttribute("r", Math.max(0, r).toFixed(2));
+          if (mode === "tilt") {
+            const grew = n.rTilt >= n.rCap;
+            el.setAttribute("fill-opacity", grew ? "0.95" : "0.28");
+            el.setAttribute("stroke", grew ? "var(--hot)" : "var(--bg)");
+            el.setAttribute("stroke-width", grew ? "2" : "1.5");
+          } else {
+            el.setAttribute("fill-opacity", "0.9");
+            el.setAttribute("stroke", "var(--bg)");
+            el.setAttribute("stroke-width", "1.5");
+          }
+        }
+        const tx = textRefs.current[i];
+        if (tx) tx.setAttribute("opacity", lt > 0.55 ? "1" : "0");
+      });
+      if (elapsed < dur + maxStag) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [mode, nodes]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
-      {/* Decorative accent wash at the top of the page */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-[480px] pointer-events-none -z-0"
-        style={{
-          background:
-            "radial-gradient(60% 100% at 20% 0%, color-mix(in srgb, var(--accent) 12%, transparent) 0%, transparent 70%), radial-gradient(50% 80% at 90% 10%, color-mix(in srgb, var(--slice-intl) 10%, transparent) 0%, transparent 65%)",
-        }}
-      />
-
-      <Header
-        theme={theme}
-        setTheme={setTheme}
-        compressed={compressed}
-        active="why"
-      />
-
-      <main className="relative max-w-[920px] mx-auto px-4 sm:px-6">
-        {/* ─── Hero ─── */}
-        <section className="pt-16 pb-12">
-          <div className="h-eyebrow mb-4">Why CAGE</div>
-          <h1
-            className="font-serif text-[var(--fg)] tracking-tight leading-[0.95]"
-            style={{
-              fontSize: "clamp(48px, 8vw, 92px)",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            The world&apos;s equities,{" "}
-            <span
-              className="italic"
-              style={{ color: "var(--accent)" }}
-            >
-              tilted on purpose.
-            </span>
-          </h1>
-          <p
-            className="mt-8 text-[var(--fg-secondary)] leading-[1.55] max-w-[680px]"
-            style={{ fontSize: "clamp(17px, 1.8vw, 21px)" }}
-          >
-            CAGE is the first Canadian-listed one-ticket way to express the
-            full evidence-based playbook: a 100% global equity allocation,
-            tilted toward companies that are <em>cheaper</em> and{" "}
-            <em>more profitable</em> than the market average. At 0.28 % per
-            year. That sentence used to require a US brokerage, four separate
-            ETFs, and a tax spreadsheet.
-          </p>
-        </section>
-
-        {/* ─── Pull quote ─── */}
-        <PullQuote cite="Ben Felix, Rational Reminder Ep. 401">
-          We had complicated model portfolios where we could say, okay, here,
-          now you DIY investor… you can invest the way we talk about. But it
-          was fairly complex and required US-listed ETFs and currency
-          conversion. With CAGE, that barrier is gone.
-        </PullQuote>
-
-        {/* ─── Section 01 ─── */}
-        <section className="py-12">
-          <SectionNumber n="01" label="The philosophy" />
-          <h2
-            className="font-serif text-[var(--fg)] tracking-tight mb-6"
-            style={{ fontSize: "clamp(28px, 3.4vw, 42px)", letterSpacing: "-0.02em" }}
-          >
-            Why cheap + profitable, not cheap alone
-          </h2>
-
-          <div className={PROSE}>
-            <p>
-              The starting point for the Avantis philosophy is the dividend
-              discount model rearranged for expected returns. If you know a
-              company&apos;s price, its book equity, and its expected future
-              cash profits, you can infer the discount rate the market is
-              applying — and a higher discount rate is, in equilibrium, a
-              higher expected return. Market-cap-weighted indexes only use
-              price. Avantis blends price with book equity and a profitability
-              measure to score every stock in its investable universe.
-            </p>
-            <p>
-              The academic foundation for the second variable — profitability —
-              is more recent than the value premium itself. Robert
-              Novy-Marx&apos;s 2013 paper{" "}
-              <em>The Other Side of Value: The Gross Profitability Premium</em>{" "}
-              showed that gross profits scaled by assets has roughly the same
-              power as book-to-price in predicting cross-sectional returns, and
-              that the two together do meaningfully better than either alone.
-              Fama and French formalised this in their 2015 five-factor model,
-              adding profitability (RMW) and investment (CMA) factors to the
-              original three. The five-factor model explains away most of what
-              looks like a value premium among small caps that ignored
-              profitability — the problem of <em>value traps</em>.
-            </p>
-            <p>
-              Avantis CIO Eduardo Repetto&apos;s own 2020 paper with Sunil
-              Wahal of Arizona State sharpened this for practitioners. Sorting
-              international stocks 1990&ndash;2020 into corners of the
-              value/profitability grid, they found that the
-              high-value/high-profitability corner outperformed the
-              low-value/low-profitability corner by enormous margins — in
-              emerging-market small caps, roughly 16.5 % annualised vs. 1.1 %.
-              The lesson Avantis takes from this is that value and
-              profitability are not two factors to be stacked; they are jointly
-              identifying the same theoretical object — a higher discount rate
-              — and must be implemented together.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
-            <StatCallout big="16.5%" label="annualised return — high-value × high-profitability EM small caps, 1990–2020" tone="gain" />
-            <StatCallout big="1.1%" label="annualised return — low-value × low-profitability corner, same window" tone="loss" />
-            <StatCallout big="50/50" label="Avantis weights value and profitability roughly equally per stock" />
-          </div>
-        </section>
-
-        {/* ─── Section 02 ─── */}
-        <section className="py-12">
-          <SectionNumber n="02" label="The implementation" />
-          <h2
-            className="font-serif text-[var(--fg)] tracking-tight mb-6"
-            style={{ fontSize: "clamp(28px, 3.4vw, 42px)", letterSpacing: "-0.02em" }}
-          >
-            Daily, opportunistic, cost-aware
-          </h2>
-
-          <div className={PROSE}>
-            <p>
-              The implementation differences from a typical index fund are
-              where Avantis becomes distinctive. A value index such as the
-              Russell 1000 Value rebalances on a fixed schedule, holds
-              everything that screens &ldquo;value&rdquo; at the reconstitution
-              date in proportion to market cap, and only revisits the question
-              once or twice a year. Avantis evaluates every name in the
-              portfolio <strong>daily</strong>, scoring it on the joint
-              value/profitability metric, then asks whether the expected return
-              improvement from trading toward the model weight exceeds the
-              actual cost of execution — commissions, bid-ask spreads, market
-              impact. Trades only happen when the answer is yes.
-            </p>
-            <p>
-              That sounds simple, but it is the practical mechanism that
-              addresses one of the long-standing problems with capturing the
-              value premium: stale, calendar-based rebalancing forces buying or
-              selling on dates when the market is already crowded into the same
-              trade.
-            </p>
-            <p>
-              Several smaller choices stack up: Avantis uses{" "}
-              <em>cash profitability</em> rather than operating profitability
-              (less manipulable through accruals); they strip goodwill from
-              book equity to neutralise the accounting distortion of
-              acquisitive companies; they cap any sector at 30 % and apply a
-              roughly three-month lag on the value metric so they don&apos;t
-              buy stocks whose prices are still falling on adverse news. Each
-              is small in isolation; the cumulative effect is a portfolio with
-              meaningfully stronger factor loadings than a passive value index
-              at roughly the same expense ratio.
-            </p>
-            <p>
-              Repetto resists the &ldquo;factor&rdquo; label for what Avantis
-              does. The model is built on financial science, but the daily,
-              cost-aware implementation looks more like systematic active
-              management than the rebalance-once-a-year mechanism most
-              investors associate with index-style factor funds.
-            </p>
-          </div>
-        </section>
-
-        {/* ─── Section 03 ─── */}
-        <section className="py-12">
-          <SectionNumber n="03" label="The Canadian angle" />
-          <h2
-            className="font-serif text-[var(--fg)] tracking-tight mb-6"
-            style={{ fontSize: "clamp(28px, 3.4vw, 42px)", letterSpacing: "-0.02em" }}
-          >
-            Why Canadians had to wait
-          </h2>
-
-          <div className={PROSE}>
-            <p>
-              If you&apos;ve spent any time around Ben Felix&apos;s YouTube
-              channel, the Rational Reminder Podcast, or PWL Capital&apos;s
-              white papers, the CIBC&ndash;Avantis launch wasn&apos;t just
-              another fund family arriving in Canada. It was the closing of a
-              gap the Canadian evidence-based community had been working around
-              for the better part of a decade.
-            </p>
-            <p>
-              PWL&apos;s white paper <em>Five Factor Investing with ETFs</em>,
-              authored by Felix, makes the case that a globally diversified
-              portfolio of broad-market funds is a defensible starting point,
-              but that decades of empirical work give investors evidence-based
-              reasons to expect modestly higher long-term returns from tilts
-              toward value, size and profitability. The white paper proposes a
-              model portfolio designed to capture all five factors — and
-              Felix&apos;s published Canadian model historically pieced this
-              together with a base of XIC, VUN, XEF and XEC, plus Avantis
-              sleeves like AVUV and AVDV for the small-value tilt.
-            </p>
-            <p>
-              That last part is where Canadian DIY investors hit a wall. Until
-              CIBC and Avantis brought their suite to the TSX in early 2026,
-              capturing those factor premia meant opening a USD-denominated
-              brokerage account, paying currency conversion to buy AVUV and
-              AVDV, and managing the resulting tax-treaty paperwork. As Felix
-              told the Globe and Mail, &ldquo;the pent-up demand for something
-              like this in Canada was huge,&rdquo; describing the underlying
-              approach as &ldquo;academically supported improvements to the
-              concept of index investing.&rdquo;
-            </p>
-          </div>
-
-          <PullQuote cite="Eduardo Repetto, Avantis Investors CIO">
-            If you want higher expected returns, you need fundamental data.
-          </PullQuote>
-
-          <div className={PROSE}>
-            <p>
-              There&apos;s a less glamorous but very Canadian reason this
-              lineup matters. A US-listed Avantis ETF held in an RRSP escapes
-              the 15 % US withholding tax on US dividends thanks to the
-              Canada&ndash;US tax treaty — fine for the US sleeve, but
-              international and emerging-markets sleeves still get hit. A
-              Canadian-listed wrapper that holds the underlying foreign stocks
-              directly (rather than wrapping a US-listed fund) avoids the
-              double-layer of withholding that catches a lot of Canadian
-              &ldquo;international&rdquo; products. The CIBC&ndash;Avantis
-              structure is built natively in Canada, which simplifies that
-              whole calculation for TFSAs, RRSPs and non-registered accounts
-              alike.
-            </p>
-          </div>
-        </section>
-
-        {/* ─── Section 04 ─── */}
-        <section className="py-12">
-          <SectionNumber n="04" label="Head-to-head" />
-          <h2
-            className="font-serif text-[var(--fg)] tracking-tight mb-6"
-            style={{ fontSize: "clamp(28px, 3.4vw, 42px)", letterSpacing: "-0.02em" }}
-          >
-            CAGE vs VEQT vs XEQT
-          </h2>
-
-          <div className={PROSE}>
-            <p>
-              The structural geography is closer than you might assume. CAGE
-              keeps a Canadian weight in line with VEQT (~30 %), which sits at
-              the high end of the 25&ndash;35 % home-bias range that PWL and
-              Vanguard&apos;s own research suggest is sensible for Canadians.
-              XEQT is leaner on Canada (~25 %) and heavier on international
-              developed. The real geographic distinction with CAGE is the
-              dedicated ~8 % sleeve in CASV (Global Small Cap Value), which
-              neither VEQT nor XEQT carries in any meaningful way.
-            </p>
-          </div>
-
-          <div className="card overflow-x-auto mt-6">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="h-eyebrow border-b border-[var(--border)]">
-                  <th className="text-left font-normal px-4 py-3"> </th>
-                  <th className="text-right font-normal px-4 py-3" style={{ color: "var(--accent)" }}>CAGE</th>
-                  <th className="text-right font-normal px-4 py-3">VEQT</th>
-                  <th className="text-right font-normal px-4 py-3">XEQT</th>
-                  <th className="text-right font-normal px-4 py-3">AVGE (US)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)] num">
-                <tr><td className="px-4 py-3 text-[var(--fg-tertiary)]">Mgmt fee</td><td className="px-4 py-3 text-right text-[var(--fg)]">0.28%</td><td className="px-4 py-3 text-right">0.17%</td><td className="px-4 py-3 text-right">0.17%</td><td className="px-4 py-3 text-right">0.23%</td></tr>
-                <tr><td className="px-4 py-3 text-[var(--fg-tertiary)]">US equities</td><td className="px-4 py-3 text-right text-[var(--fg)]">~40%</td><td className="px-4 py-3 text-right">~45%</td><td className="px-4 py-3 text-right">~45%</td><td className="px-4 py-3 text-right">~70%</td></tr>
-                <tr><td className="px-4 py-3 text-[var(--fg-tertiary)]">Canada</td><td className="px-4 py-3 text-right text-[var(--fg)]">30.0%</td><td className="px-4 py-3 text-right">~31%</td><td className="px-4 py-3 text-right">~25%</td><td className="px-4 py-3 text-right">0%</td></tr>
-                <tr><td className="px-4 py-3 text-[var(--fg-tertiary)]">Intl developed</td><td className="px-4 py-3 text-right text-[var(--fg)]">17.6%</td><td className="px-4 py-3 text-right">~20%</td><td className="px-4 py-3 text-right">~25%</td><td className="px-4 py-3 text-right">~17%</td></tr>
-                <tr><td className="px-4 py-3 text-[var(--fg-tertiary)]">Emerging</td><td className="px-4 py-3 text-right text-[var(--fg)]">5.0%</td><td className="px-4 py-3 text-right">~5%</td><td className="px-4 py-3 text-right">~5%</td><td className="px-4 py-3 text-right">~10%</td></tr>
-                <tr><td className="px-4 py-3 text-[var(--fg-tertiary)]">Small-cap value</td><td className="px-4 py-3 text-right text-[var(--fg)]">8.0%</td><td className="px-4 py-3 text-right">—</td><td className="px-4 py-3 text-right">—</td><td className="px-4 py-3 text-right">embedded</td></tr>
-                <tr><td className="px-4 py-3 text-[var(--fg-tertiary)]">Method</td><td className="px-4 py-3 text-right text-[var(--fg)]">Daily factor tilt</td><td className="px-4 py-3 text-right">Cap-weighted</td><td className="px-4 py-3 text-right">Cap-weighted</td><td className="px-4 py-3 text-right">Daily factor tilt</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div className={PROSE + " mt-8"}>
-            <p>
-              <strong>Is the MER gap justified?</strong> Be honest with
-              yourself. CAGE at 0.28 % is meaningfully higher than VEQT/XEQT at
-              0.17 %. On a $100 000 portfolio that&apos;s roughly an extra
-              $100&ndash;110 a year. The case for paying it: daily,
-              opportunistic security selection (not annual rebalance),
-              book-value and profitability screens with nearly a century of
-              out-of-sample evidence, and an explicit small-cap-value tilt
-              you&apos;d otherwise have to construct yourself with three or
-              four separate ETFs. The case against: factor premia, if they
-              exist, typically require 15+ year holding periods to show up
-              reliably; the US small-cap-value premium has trailed the S&amp;P
-              500 for two decades. If you can&apos;t honestly say you&apos;d
-              sit through five years of underperformance without switching,
-              don&apos;t own CAGE. Tracking error is the price of admission.
-            </p>
-          </div>
-        </section>
-
-        {/* ─── Section 05 ─── */}
-        <section className="py-12">
-          <SectionNumber n="05" label="The honest answer" />
-          <h2
-            className="font-serif text-[var(--fg)] tracking-tight mb-6"
-            style={{ fontSize: "clamp(28px, 3.4vw, 42px)", letterSpacing: "-0.02em" }}
-          >
-            Who CAGE is actually for
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2 mb-8">
-            <StatCallout big="1.5–2%" label="annual expected outperformance vs cap-weighted, per Avantis" tone="gain" />
-            <StatCallout big="3–4%" label="tracking error you have to sit through" tone="loss" />
-            <StatCallout big="15+ yr" label="realistic horizon for factor premia to compound" />
-          </div>
-
-          <div className={PROSE}>
-            <p>
-              In the same Rational Reminder conversation, Repetto laid out
-              Avantis&apos;s expectations in unusually concrete terms: roughly
-              1.5&ndash;2 % of annual outperformance over a cap-weighted
-              benchmark, with 3&ndash;4 % tracking error and significant noise
-              around any realised outcome. The mechanism is the kind of
-              measured deviation Avantis is known for — shifts of about 15 %
-              underweight and 15 % overweight away from low-profitability,
-              expensive stocks and toward cheaper, more profitable ones.
-            </p>
-            <p>
-              <strong>CAGE is the right choice if</strong> you already own a
-              factor-tilted portfolio (or wanted to build one) and would prefer
-              a single ticker instead of juggling AVUV, AVDV, AVES and AVEM
-              yourself in a Canadian-friendly wrapper. It&apos;s the right
-              choice if you have a genuinely long horizon, believe the academic
-              evidence on value and profitability, and can sit through
-              stretches where market-cap indexes beat you.
-            </p>
-            <p>
-              <strong>It&apos;s the wrong choice if</strong> your reaction to
-              CAGE underperforming XEQT by 4 % over a year would be to switch.
-              In that case, the cheapest market-cap portfolio you&apos;ll
-              actually hold for 30 years beats the theoretically optimal factor
-              portfolio you abandon after two.
-            </p>
-            <p>
-              For most Canadians picking their first one-ticket equity ETF and
-              wanting a hands-off solution, XEQT and VEQT remain hard to argue
-              with. CAGE is a more specific tool for a more specific investor —
-              and now, for the first time, it&apos;s available without the
-              currency-conversion-and-tax-spreadsheet tax.
-            </p>
-          </div>
-        </section>
-
-        {/* ─── Sources ─── */}
-        <section className="py-12 border-t border-[var(--border)]">
-          <div className="h-eyebrow mb-4">Sources</div>
-          <ol className="space-y-3">
-            <Citation n={1} href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2287202">
-              Fama, E. F. and French, K. R. (2015). &ldquo;A Five-Factor Asset Pricing Model.&rdquo; Journal of Financial Economics, Vol. 116.
-            </Citation>
-            <Citation n={2} href="https://www.sciencedirect.com/science/article/abs/pii/S0304405X13000044">
-              Novy-Marx, R. (2013). &ldquo;The Other Side of Value: The Gross Profitability Premium.&rdquo; Journal of Financial Economics.
-            </Citation>
-            <Citation n={3} href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3739571">
-              Wahal, S. and Repetto, E. (2020). &ldquo;The Joint Distribution of Value and Profitability: International Evidence.&rdquo; SSRN.
-            </Citation>
-            <Citation n={4} href="https://www.aqr.com/-/media/AQR/Documents/Journal-Articles/JPM-Fact-Fiction-and-Value-Investing.pdf">
-              Asness, C., Frazzini, A., Israel, R. and Moskowitz, T. (2015). &ldquo;Fact, Fiction, and Value Investing.&rdquo; AQR.
-            </Citation>
-            <Citation n={5} href="https://pwlcapital.com/episode-401-eduardo-repetto-caitlin-ebanks-opening-the-avantis-cage/">
-              Rational Reminder Podcast Ep. 401 — Eduardo Repetto &amp; Caitlin Ebanks: Opening the Avantis CAGE (PWL Capital).
-            </Citation>
-            <Citation n={6} href="https://pwlcapital.com/wp-content/uploads/2024/08/Five-Factor-Investing-with-ETFs.pdf">
-              Felix, B. &ldquo;Five Factor Investing with ETFs.&rdquo; PWL Capital white paper.
-            </Citation>
-            <Citation n={7} href="https://www.theglobeandmail.com/investing/markets/inside-the-market/article-cage-avantis-cibc-etf-investing-stock/">
-              &ldquo;JustBuyCAGE: Why Canadian investors are flocking to this ETF.&rdquo; The Globe and Mail.
-            </Citation>
-            <Citation n={8} href="https://canadianportfoliomanagerblog.com/part-i-foreign-withholding-taxes-for-equity-etfs/">
-              Bender, J. &ldquo;Foreign Withholding Taxes for Equity ETFs.&rdquo; Canadian Portfolio Manager Blog (PWL Capital).
-            </Citation>
-            <Citation n={9} href="https://res.americancentury.com/docs/inst-avantis-scientific-approach-to-investing.pdf">
-              Avantis Investors / American Century. &ldquo;A Scientific Approach to Investing.&rdquo;
-            </Citation>
-            <Citation n={10} href="https://www.cibc.com/en/personal-banking/investments/etfs/avantis-all-equity-asset-allocation-etf.html">
-              CIBC — Avantis CIBC All-Equity Asset Allocation ETF product page.
-            </Citation>
-          </ol>
-        </section>
-
-        {/* CTA back */}
-        <section className="py-8 mb-8 text-center">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-5 h-11 rounded-md border border-[var(--border)] text-[14px] text-[var(--fg-secondary)] hover:text-[var(--fg)] hover:border-[var(--accent)] transition-colors"
-          >
-            <span aria-hidden>←</span>
-            Back to the live CAGE dashboard
-          </Link>
-        </section>
-
-        <Footer />
-      </main>
+    <div className="bubbles">
+      <svg viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
+        {nodes.map((n) => (
+          <g className="bub" key={n.i} transform={`translate(${n.x.toFixed(1)},${n.y.toFixed(1)})`}>
+            <circle ref={(el) => { circleRefs.current[n.i] = el; }} r={0} fill={REGION_COLOR[n.region]} fillOpacity={0.9} stroke="var(--bg)" strokeWidth={1.5} />
+            {n.big && (
+              <text ref={(el) => { textRefs.current[n.i] = el; }} textAnchor="middle" dy="0.32em" fontSize={Math.min(13, n.rPack / 2.4).toFixed(0)} fontWeight="700" opacity={0}>
+                {n.tk}
+              </text>
+            )}
+          </g>
+        ))}
+      </svg>
     </div>
+  );
+}
+
+// ─── $1 factor-growth race ────────────────────────────────────────────────────
+function Race({ active }: { active: boolean }) {
+  const W = 640,
+    H = 560,
+    PL = 16,
+    PR = 92,
+    PT = 28,
+    PB = 30,
+    YEARS = 50;
+  const series = useMemo(
+    () => RACE_SERIES.map((s) => ({ ...s, pts: Array.from({ length: YEARS + 1 }, (_, y) => Math.pow(1 + s.cagr, y)) })),
+    []
+  );
+  const maxV = Math.max(...series.flatMap((s) => s.pts));
+  const x = (y: number) => PL + (y / YEARS) * (W - PL - PR);
+  const ly = (v: number) => {
+    const lo = Math.log10(1),
+      hi = Math.log10(maxV);
+    return H - PB - ((Math.log10(v) - lo) / (hi - lo)) * (H - PT - PB);
+  };
+
+  return (
+    <div className="race">
+      <div className="ttl">$1 invested · 50-yr horizon · illustrative long-run premia</div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        {[1, 10, 100, 500].map((v) => (
+          <g key={v}>
+            <line x1={PL} x2={W - PR} y1={ly(v)} y2={ly(v)} stroke="var(--ink-4)" strokeWidth="0.5" strokeDasharray="2 4" />
+            <text x={PL} y={ly(v) - 5} fontFamily="var(--mono)" fontSize="9" fill="var(--ink-3)">${v}</text>
+          </g>
+        ))}
+        {series.map((s, i) => {
+          const d = s.pts.map((v, y) => `${y === 0 ? "M" : "L"} ${x(y).toFixed(1)} ${ly(v).toFixed(1)}`).join(" ");
+          const endY = ly(s.pts[YEARS]);
+          const mult = Math.round(s.pts[YEARS]);
+          return (
+            <g key={s.key}>
+              <path d={d} fill="none" stroke={s.color} strokeWidth={s.key === "scv" ? 2.6 : 1.6} strokeLinecap="round" strokeLinejoin="round"
+                pathLength={1} style={{ strokeDasharray: 1, strokeDashoffset: active ? 0 : 1, transition: "stroke-dashoffset 1.1s cubic-bezier(.2,.7,.2,1)", transitionDelay: `${i * 0.12}s` }} />
+              <circle cx={x(YEARS).toFixed(1)} cy={endY.toFixed(1)} r="3.5" fill={s.color} opacity={active ? 1 : 0} style={{ transition: "opacity 0.3s ease", transitionDelay: `${0.8 + i * 0.12}s` }} />
+              <text x={(W - PR + 7).toFixed(1)} y={(endY - 3).toFixed(1)} fontFamily="var(--display)" fontSize="13" fill={s.color} letterSpacing="-0.02em">×{mult}</text>
+              <text x={(W - PR + 7).toFixed(1)} y={(endY + 10).toFixed(1)} fontFamily="var(--mono)" fontSize="8" fill="var(--ink-3)" letterSpacing="0.04em">{s.nm.toUpperCase()}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ─── Scrollytelling controller ────────────────────────────────────────────────
+function Scrolly() {
+  const [active, setActive] = useState(0);
+  const [bubbleMode, setBubbleMode] = useState<"" | "cap" | "tilt" | null>(null);
+  const [raceSeen, setRaceSeen] = useState(false);
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const mid = window.innerHeight / 2;
+        let best = 0,
+          bestD = Infinity;
+        stepRefs.current.forEach((s, i) => {
+          if (!s) return;
+          const r = s.getBoundingClientRect();
+          const c = r.top + r.height / 2;
+          const d = Math.abs(c - mid);
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        });
+        setActive(best);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const s = STEPS[active];
+    if (s.scene === "bubbles") setBubbleMode(s.mode);
+    if (s.scene === "race") setRaceSeen(true);
+  }, [active]);
+
+  const activeScene = STEPS[active].scene;
+
+  return (
+    <section className="scrolly">
+      <div className="scrolly-graphic">
+        <div className="why-stage">
+          <div className={`scene${activeScene === "shelf" ? " on" : ""}`} data-scene="shelf">
+            <div className="shelf" style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
+              <div className="shelf-row">
+                <div className="etf-card">
+                  <div className="tk">VEQT</div>
+                  <div className="nm">Vanguard All-Equity ETF Portfolio</div>
+                  <div className="specs">
+                    {[["Holdings", "~13,500"], ["Tickers to buy", "1"], ["Equity", "100%"], ["Weighting", "By size"], ["MER", "0.24%"]].map(([k, v]) => (
+                      <div className="sp" key={k}><span className="k">{k}</span><span className="v">{v}</span></div>
+                    ))}
+                  </div>
+                </div>
+                <div className="etf-card cage">
+                  <span className="badge">The contrarian</span>
+                  <div className="tk">CAGE</div>
+                  <div className="nm">Avantis CIBC All-Equity ETF</div>
+                  <div className="specs">
+                    <div className="sp"><span className="k">Holdings</span><span className="v">~9,000</span></div>
+                    <div className="sp"><span className="k">Tickers to buy</span><span className="v">1</span></div>
+                    <div className="sp"><span className="k">Equity</span><span className="v">100%</span></div>
+                    <div className="sp"><span className="k">Weighting</span><span className="v" style={{ color: "var(--hot)" }}>By evidence</span></div>
+                    <div className="sp"><span className="k">MER</span><span className="v">0.28%</span></div>
+                  </div>
+                </div>
+              </div>
+              <div className="shelf-q">On the shelf, nearly <em>identical.</em> Underneath, not even close.</div>
+            </div>
+            <div className="scene-tag">On the shelf</div>
+          </div>
+
+          <div className={`scene${activeScene === "bubbles" ? " on" : ""}`} data-scene="bubbles">
+            <div className="scene-tag">{bubbleMode === "tilt" ? "Weighted by value × profitability" : "Weighted by market cap"}</div>
+            <div className="bub-legend">
+              <div className="li"><span className="sw" style={{ background: "#e8281f" }} />US</div>
+              <div className="li"><span className="sw" style={{ background: "#f0c12a" }} />Canada</div>
+              <div className="li"><span className="sw" style={{ background: "#e8e3d3" }} />Intl / EM</div>
+            </div>
+            <Bubbles mode={bubbleMode} />
+            <div className="scene-cap">
+              {bubbleMode === "tilt" ? (
+                <><b>Red-ringed</b> bubbles grew under CAGE — cheaper, more profitable. The faded mega-caps shrank.</>
+              ) : (
+                <>Each circle is a company. Size = how much of the fund it is. The crowd piles into the biggest.</>
+              )}
+            </div>
+          </div>
+
+          <div className={`scene${activeScene === "race" ? " on" : ""}`} data-scene="race">
+            <Race active={raceSeen} />
+            <div className="scene-cap">Long-short academic factor indices. Live funds capture a fraction — but the direction has held for decades.</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="scrolly-steps">
+        <div className="step" ref={(el) => { stepRefs.current[0] = el; }}>
+          <div className="step-n">01</div>
+          <h2>Same <em>shelf.</em></h2>
+          <p className="lead">Put CAGE and VEQT side by side and they look like twins.</p>
+          <p>Both are <strong>one-ticker, all-equity, globally diversified</strong> ETFs. Buy either and you own thousands of companies across every continent, auto-rebalanced, for a fraction of a percent a year.</p>
+          <p>So if they&apos;re so alike — <strong>why does CAGE exist?</strong> The answer is in one word on the spec sheet: <strong>weighting.</strong></p>
+        </div>
+        <div className="step" ref={(el) => { stepRefs.current[1] = el; }}>
+          <div className="step-n">02</div>
+          <h2>Cap-weighting trusts <em>the crowd.</em></h2>
+          <p>VEQT and XEQT weight every company by its <strong>market capitalization</strong> — its price times its shares. The more the market already loves a stock, the bigger your slice.</p>
+          <div className="pullnum">~25%<span className="u"> in 10 names</span></div>
+          <p>A handful of US mega-caps — Apple, Microsoft, Nvidia — dominate the whole portfolio. You&apos;re not betting on the world. You&apos;re <strong>betting on whatever&apos;s already expensive.</strong></p>
+        </div>
+        <div className="step" ref={(el) => { stepRefs.current[2] = el; }}>
+          <div className="step-n">03</div>
+          <h2>CAGE tilts <em>on purpose.</em></h2>
+          <p>Watch the same companies re-weight. CAGE systematically trims the priciest mega-caps and leans into stocks that are <strong>cheaper relative to their fundamentals</strong> and <strong>more profitable.</strong></p>
+          <p>Nvidia shrinks. A profitable, unglamorous bank or energy name grows. Nothing is excluded — it&apos;s a <strong>tilt</strong>, not a bet on ten stocks.</p>
+          <div className="ministat">
+            <div className="ms"><div className="l">Top-10 weight</div><div className="v" style={{ color: "var(--gain)" }}>~11%</div></div>
+            <div className="ms"><div className="l">vs VEQT</div><div className="v">~25%</div></div>
+            <div className="ms"><div className="l">Names held</div><div className="v">~9,000</div></div>
+          </div>
+        </div>
+        <div className="step" ref={(el) => { stepRefs.current[3] = el; }}>
+          <div className="step-n">04</div>
+          <h2>Why <em>those</em> tilts?</h2>
+          <p className="lead">Because the data behind them is about as close to a law as finance gets.</p>
+          <p>Nobel laureates Eugene Fama and Kenneth French spent decades showing that, over the long run, <strong>cheaper</strong> companies (value), <strong>more profitable</strong> companies, and <strong>smaller</strong> companies have earned higher returns than the market — repeated across 90+ years and dozens of countries.</p>
+          <p>A dollar riding those tilts didn&apos;t just beat the market. It <strong>lapped it</strong> — though never in a straight line, and never without stretches of pain.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Dials ────────────────────────────────────────────────────────────────────
+function Dials() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.3);
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <section className="sec-block" id="dials-sec">
+      <div className="sec-head">
+        <div className="num">05</div>
+        <h2>CAGE&apos;s <em>four dials.</em></h2>
+        <div className="right">Loadings vs<br />ACWI IMI = 0</div>
+      </div>
+      <p className="sec-sub">CAGE doesn&apos;t guess. It turns four evidence-based dials, each measured against a plain market-cap index (where every dial sits at zero). Positive = CAGE leans <strong>into</strong> that style. Click a dial for the why.</p>
+      <div className="dials" ref={ref}>
+        {FACTOR_DIALS.map((d, i) => {
+          const pct = Math.min(50, (Math.abs(d.load) / 0.7) * 50);
+          const neg = d.load < 0;
+          return (
+            <div className={`dial${open === i ? " open" : ""}`} key={d.nm} onClick={() => setOpen(open === i ? null : i)}>
+              <div className="top">
+                <div className="nm">{d.nm} <em>{d.em}</em></div>
+                <div className={`load${neg ? " neg" : ""}`}>{d.load >= 0 ? "+" : ""}{d.load.toFixed(2)}</div>
+              </div>
+              <div className="sub">{d.sub}</div>
+              <div className="bar"><div className="mid" /><div className={`fill ${neg ? "neg" : "pos"}`} style={{ width: inView ? `${pct.toFixed(1)}%` : 0 }} /></div>
+              <div className="ticks"><span>−0.7 underweight</span><span>ACWI = 0</span><span>+0.7 overweight</span></div>
+              <div className="desc" dangerouslySetInnerHTML={{ __html: d.desc }} />
+              <div className="more">Click for the evidence →</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ─── Generic scroll-reveal wrapper ───────────────────────────────────────────
+function Reveal({ children, className }: { children: React.ReactNode; className?: string }) {
+  const { ref, inView } = useInView<HTMLElement>(0.08);
+  return (
+    <section ref={ref} className={`${className ?? ""} reveal${inView ? " in" : ""}`}>
+      {children}
+    </section>
+  );
+}
+
+export default function Why() {
+  return (
+    <>
+      <SiteHeader active="why" right={<span className="wordmark"><span className="c" style={{ margin: 0 }}>12 min read</span></span>} />
+      <ReadProgress />
+      <main className="tp-why">
+        <section className="why-hero intro">
+          <div className="why-eyebrow"><span className="tag">The case</span> Why this, not VEQT?</div>
+          <h1 className="why-h1">TRUST THE <em>math.</em><br />Not the crowd.</h1>
+          <p className="why-dek">VEQT and XEQT hold the whole world by <strong>size</strong> — the bigger a company already is, the more you own. CAGE holds the whole world by <strong>evidence</strong> — tilting toward companies that are cheaper and more profitable. Same plumbing. Opposite philosophy.</p>
+          <div className="why-byline">
+            <span>By <b>The BuyCage Desk</b></span>
+            <span>·</span>
+            <span><b>Independent</b> · not advice</span>
+          </div>
+          <div className="scroll-hint"><span className="arr">↓</span> Scroll — the chart follows along</div>
+        </section>
+
+        <Scrolly />
+
+        <Dials />
+
+        <Reveal className="sec-block tight">
+          <div className="sec-head">
+            <div className="num">06</div>
+            <h2>Head to <em>head.</em></h2>
+            <div className="right">CAGE vs<br />VEQT · XEQT</div>
+          </div>
+          <p className="sec-sub">Where they&apos;re identical, where they diverge. CAGE costs <strong>4 basis points more</strong> than VEQT — about <strong>$4 a year on $10,000</strong> — and in exchange you get an active factor tilt instead of pure market-cap.</p>
+          <div className="h2h">
+            <div className="h2h-row head">
+              <div className="c" />
+              {H2H_COLS.map((c) => (
+                <div className={`c fund ${c === "CAGE" ? "cage" : ""}`} key={c}><span className="tkr">{c}</span><span className="nm">{H2H_NAMES[c]}</span></div>
+              ))}
+            </div>
+            {H2H_ROWS.map((r) => (
+              <div className="h2h-row" key={r.k}>
+                <div className="c k">{r.k}</div>
+                <div className="c v cage-col"><span><b>{r.cage[0]}</b>{r.cage[1] && <span className="win">edge</span>}</span></div>
+                <div className="c v"><span>{r.veqt[1] ? <b>{r.veqt[0]}</b> : r.veqt[0]}{r.veqt[1] && <span className="win">edge</span>}</span></div>
+                <div className="c v"><span>{r.xeqt[1] ? <b>{r.xeqt[0]}</b> : r.xeqt[0]}{r.xeqt[1] && <span className="win">edge</span>}</span></div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal className="sec-block tight">
+          <div className="sec-head">
+            <div className="num">07</div>
+            <h2>The <em>catch.</em></h2>
+            <div className="right">Read this<br />part twice</div>
+          </div>
+          <p className="sec-sub">We&apos;re not here to sell you. A tilt is a decision to <strong>look different from the market</strong> — and looking different is the whole reason it can pay, and the whole reason it can hurt.</p>
+          <div className="catch">
+            <div className="ct"><div className="ic">01</div><h4>It can lag for years</h4><p>Value underperformed growth for most of <strong>2010–2020</strong>. A factor tilt can trail a plain index for a <strong>decade</strong> before the premium shows up. If you&apos;ll panic-sell after three bad years, the tilt will hurt you, not help you.</p></div>
+            <div className="ct"><div className="ic">02</div><h4>You pay a little more</h4><p>0.28% vs VEQT&apos;s 0.24%. Small, but real. You&apos;re paying for <strong>active implementation</strong> — daily screening on price and profitability — not just index replication.</p></div>
+            <div className="ct"><div className="ic">03</div><h4>Tracking error is the price</h4><p>CAGE will sometimes <strong>visibly trail</strong> the index your friends own. That difference — tracking error — is not a bug. It&apos;s the cost of admission to a premium that only exists because most people won&apos;t tolerate it.</p></div>
+          </div>
+        </Reveal>
+
+        <Reveal className="sec-block tight">
+          <div className="sec-head">
+            <div className="num">08</div>
+            <h2>So, <em>is it for you?</em></h2>
+            <div className="right">The honest<br />answer</div>
+          </div>
+          <div className="verdict">
+            <div className="col yes">
+              <div className="h"><span className="dot" />CAGE makes sense if you…</div>
+              <ul>
+                <li>Can answer <strong>&ldquo;why this, not VEQT?&rdquo;</strong> in one sentence — and now you can.</li>
+                <li>Have a <strong>10-year-plus</strong> horizon and won&apos;t flinch when the tilt lags.</li>
+                <li>Believe decades of evidence beat the crowd&apos;s latest favourite.</li>
+                <li>Want a tilt <strong>built in</strong>, not a five-fund spreadsheet.</li>
+              </ul>
+            </div>
+            <div className="col no">
+              <div className="h"><span className="dot" />Stick with VEQT/XEQT if you…</div>
+              <ul>
+                <li>Will compare your return to a friend&apos;s index fund <strong>every quarter.</strong></li>
+                <li>Want the <strong>cheapest possible</strong> all-in-one and nothing more.</li>
+                <li>Don&apos;t have conviction in factor premia — <strong>and that&apos;s fine.</strong></li>
+                <li>Would sell the moment CAGE trails for a couple of years.</li>
+              </ul>
+            </div>
+          </div>
+        </Reveal>
+
+        <div className="why-cta">
+          <div className="band">
+            <h3>Market-cap says <strong>&ldquo;trust the crowd.&rdquo;</strong><br />CAGE says <strong>&ldquo;trust the math.&rdquo;</strong></h3>
+            <div className="actions">
+              <Link href="/inside" className="btn solid">See inside CAGE →</Link>
+              <Link href="/" className="btn ghost">Back to today</Link>
+            </div>
+          </div>
+        </div>
+      </main>
+      <SiteFooter left="© 2026 BuyCage · Not investment advice · Independent" right={<>Factor data: Fama–French / Avantis</>} />
+    </>
   );
 }
