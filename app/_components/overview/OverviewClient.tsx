@@ -5,10 +5,7 @@ import type { DashboardPayload } from "@/lib/data/fetchDashboard";
 import { buildLiveDataset, emptyPayload } from "./data";
 import { DatasetProvider } from "./dataset";
 
-const Overview = dynamic(
-  () => import("./Overview").then((m) => m.Overview),
-  { ssr: false }
-);
+const Today = dynamic(() => import("./Today"), { ssr: false });
 
 export function OverviewClient({ live }: { live: DashboardPayload | null }) {
   // Always go through buildLiveDataset — no synthesised mock fallback.
@@ -18,7 +15,7 @@ export function OverviewClient({ live }: { live: DashboardPayload | null }) {
   const dataset = buildLiveDataset(live ?? emptyPayload());
   return (
     <DatasetProvider value={dataset}>
-      <Overview />
+      <Today />
     </DatasetProvider>
   );
 }
