@@ -1,43 +1,48 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Archivo_Black, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-const geist = Geist({
+const archivoBlack = Archivo_Black({
   subsets: ["latin"],
   display: "swap",
-  variable: "--next-font-geist",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
+  weight: "400",
 });
 
-const geistMono = Geist_Mono({
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--next-font-geist-mono",
-  weight: ["400", "500"],
+  variable: "--font-sans",
 });
 
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   display: "swap",
-  variable: "--next-font-instrument-serif",
-  weight: ["400"],
+  variable: "--font-serif",
+  weight: "400",
   style: ["normal", "italic"],
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://buycage.ca"),
   title: {
-    default: "BuyCage · $CAGE Daily Dashboard",
-    template: "%s | BuyCage",
+    default: "JustBuyCage — Trust the math, not the crowd",
+    template: "%s · JustBuyCage",
   },
   description:
-    "BuyCage — daily dashboard for the Avantis CIBC All-Equity Asset Allocation ETF ($CAGE).",
+    "A daily, opinionated read on CAGE — the Canadian all-equity ETF that tilts toward cheaper, more profitable companies.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f5f0",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({
@@ -48,11 +53,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      data-theme="light"
-      className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+      data-theme="dark"
+      className={`${archivoBlack.variable} ${inter.variable} ${instrumentSerif.variable} ${jetBrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen">
+      <body>
         {children}
         <Analytics />
         <SpeedInsights />
