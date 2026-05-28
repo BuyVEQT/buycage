@@ -241,11 +241,11 @@ const REGION_OF_ETF_INTERNAL: Record<string, string> = {
 };
 
 export const SIB_PALETTE: Record<SiblingColor, string> = {
-  us: "var(--accent)",
-  intl: "var(--slice-intl)",
-  em: "var(--slice-em)",
-  ca: "var(--slice-ca)",
-  smallcap: "var(--slice-sc)",
+  us: "var(--sl-us)",
+  intl: "var(--sl-intl)",
+  em: "var(--sl-em)",
+  ca: "var(--sl-ca)",
+  smallcap: "var(--sl-sc)",
 };
 
 const COMPARISON_CONFIG: Omit<ComparisonSeries, "series">[] = [
