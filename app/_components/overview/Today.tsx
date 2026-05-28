@@ -12,6 +12,7 @@ import {
 } from "./today.data";
 import { SiteHeader } from "../chrome/SiteHeader";
 import { SiteFooter } from "../chrome/SiteFooter";
+import "./today.css";
 
 const TAU = Math.PI * 2;
 
