@@ -242,4 +242,34 @@
     align-items: flex-start;
     gap: 20px;
   }
+  /* shelf scene: shrink the two ETF cards so they fit + read in the narrow sticky stage */
+  .tp-why .shelf {
+    padding: 14px;
+  }
+  .tp-why .shelf-row {
+    gap: 10px;
+  }
+  .tp-why .etf-card {
+    padding: 12px;
+  }
+  .tp-why .etf-card .badge {
+    font-size: 7px;
+    padding: 3px 5px;
+  }
+  .tp-why .etf-card .tk {
+    font-size: 20px;
+  }
+  .tp-why .etf-card .nm {
+    font-size: 8.5px;
+    min-height: 0;
+    margin-top: 4px;
+  }
+  .tp-why .etf-card .specs .sp {
+    padding: 5px 0;
+    font-size: 9.5px;
+  }
+  .tp-why .shelf-q {
+    font-size: 14px;
+    margin-top: 10px;
+  }
 }

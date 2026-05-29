@@ -366,7 +366,7 @@ function CompareChart() {
   // for a compact tap-through card to the full performance chart on /inside.
   const mobileCard = (
     <Link href="/inside#performance" className="compare-mobile">
-      <div className="cm-cap">Since inception · total return</div>
+      <div className="cm-cap">Since inception (~3 mo) · total return</div>
       <div className="cm-rows">
         <div className="cm-row"><span className="sw" style={{ background: "var(--hot)" }} />CAGE<b>{fmtPct(meta.cage)}</b></div>
         <div className="cm-row"><span className="sw" style={{ background: veqtColor }} />VEQT<b>{fmtPct(meta.veqt)}</b></div>

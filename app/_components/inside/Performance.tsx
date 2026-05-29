@@ -62,7 +62,7 @@ export function Performance() {
   const visible = useMemo(() => KEYS.filter((k) => show[k]), [show]);
   const n = win.cage.length;
 
-  const { x, y, grid, paths, ends, yMin, yMax } = useMemo(() => {
+  const { x, y, grid, paths } = useMemo(() => {
     const vals: number[] = [];
     visible.forEach((k) => win[k].forEach((v) => v != null && vals.push(v)));
     let lo = Math.min(0, ...vals, 0),
@@ -124,7 +124,7 @@ export function Performance() {
         <h2>The <em>performance.</em></h2>
         <div className="right">CAGE vs<br />VEQT · XEQT · ACWI</div>
       </div>
-      <p className="sec-sub">Total return overlay. Pick a window. Toggle series in/out. Below: the same numbers as a table you can scan in five seconds.</p>
+      <p className="sec-sub">Total return overlay. Pick a window. Toggle series in/out. Exact figures are in the table below. <strong>CAGE listed 18 Mar 2026 — barely three months of history, so read short-window returns as early signal, not a track record.</strong></p>
 
       <div className="perf-frame" ref={ref}>
         <div className="perf-controls">
@@ -159,9 +159,6 @@ export function Performance() {
                 {paths.map((p, idx) => (
                   <path key={p.k} data-key={p.k} d={p.d} fill="none" stroke={HEX[p.k]} strokeWidth={p.sw} strokeLinecap="round" strokeLinejoin="round"
                     pathLength={1} style={{ strokeDasharray: 1, strokeDashoffset: inView ? 0 : 1, transition: "stroke-dashoffset 0.95s cubic-bezier(.2,.7,.2,1)", transitionDelay: `${idx * 0.09}s` }} />
-                ))}
-                {ends.map((e) => (
-                  <text key={e.k} x={Wd - Pd - 4} y={y(e.v) + 4} textAnchor="end" fontFamily="var(--display)" fontSize="13" fill={HEX[e.k]} letterSpacing="-0.02em">{e.v >= 0 ? "+" : ""}{e.v.toFixed(2)}%</text>
                 ))}
                 {cross && (
                   <g>
