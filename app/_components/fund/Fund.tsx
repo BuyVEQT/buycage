@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Footer } from "../overview/Footer";
 import { Header, useScrollY } from "../overview/Header";
 import { useDataset } from "../overview/dataset";
 import { IconArrowDown, IconArrowUp } from "../overview/icons";
-import { FundChart } from "./FundChart";
+
+// Recharts' ResponsiveContainer measures the DOM (0-width on the server) and
+// would mismatch on hydration, so the chart is the one client-only island on an
+// otherwise server-rendered page. The per-ticker copy + holdings table still SSR.
+const FundChart = dynamic(() => import("./FundChart").then((m) => m.FundChart), {
+  ssr: false,
+});
 
 function fmtPct(n: number, digits = 2): string {
   const sign = n > 0 ? "+" : "";
