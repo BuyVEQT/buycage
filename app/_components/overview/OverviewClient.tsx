@@ -1,12 +1,14 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import type { DashboardPayload } from "@/lib/data/fetchDashboard";
 import { buildLiveDataset, emptyPayload } from "./data";
 import { DatasetProvider } from "./dataset";
+import Today from "./Today";
 
-const Today = dynamic(() => import("./Today"), { ssr: false });
-
+// Server-rendered (no ssr:false). The dataset is now a pure function of the
+// server payload (buildLiveDataset derives "today" from fetchedAt), so the
+// home page hydrates without mismatch and crawlers get the hero copy, the
+// thesis, the factor pitch, and the teaser text in the initial HTML.
 export function OverviewClient({ live }: { live: DashboardPayload | null }) {
   // Always go through buildLiveDataset — no synthesised mock fallback.
   // If the server-side fetch returned null (Yahoo down + cache miss),

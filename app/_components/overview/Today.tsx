@@ -26,12 +26,14 @@ function PriceSlab() {
         100
       : null;
   const si = RETURNS.fund.SI;
-  const dateLabel = new Date(fetchedAt ?? Date.now()).toLocaleDateString("en-CA", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const dateLabel = fetchedAt
+    ? new Date(fetchedAt).toLocaleDateString("en-CA", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <div className="hero-right">
@@ -155,8 +157,9 @@ function XRay() {
         t: s.t,
         d: arc(a0, a1, 40, 106),
         color: s.color,
-        lx: Math.sin(mid) * 72,
-        ly: -Math.cos(mid) * 72,
+        // Round trig-derived label coords — same SSR/client ULP hazard as arc().
+        lx: +(Math.sin(mid) * 72).toFixed(2),
+        ly: +(-Math.cos(mid) * 72).toFixed(2),
         w: s.weight,
         show: s.weight > 0.07,
       });

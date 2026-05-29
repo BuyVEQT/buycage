@@ -21,7 +21,10 @@ export type DashboardSymbolPayload = {
 };
 
 export type DashboardPayload = {
-  fetchedAt: string;
+  // null only for the empty/fallback payload (no data → no "as of" time). A
+  // real fetch always stamps this. Kept nullable so the empty state needn't
+  // invent a render-time timestamp, which would break SSR hydration.
+  fetchedAt: string | null;
   cage: DashboardSymbolPayload;
   siblings: DashboardSymbolPayload[];
   comparisons: DashboardSymbolPayload[];
