@@ -65,7 +65,19 @@ function useInView<T extends Element>(threshold = 0.2) {
       { threshold }
     );
     io.observe(el);
-    return () => io.disconnect();
+    // "Already in viewport on load" fallback (per design README) — covers
+    // initial-render-visible elements and contexts that don't drive the observer.
+    const raf = requestAnimationFrame(() => {
+      const r = el.getBoundingClientRect();
+      if (r.top < (window.innerHeight || 800) && r.bottom > 0) {
+        setInView(true);
+        io.disconnect();
+      }
+    });
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
   }, [threshold]);
   return { ref, inView };
 }
