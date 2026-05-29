@@ -38,7 +38,7 @@ export function Anatomy() {
         a1 = acc + s.weight * TAU;
       acc = a1;
       const mid = (a0 + a1) / 2;
-      sleeveArcs.push({ t: s.t, d: arc(a0, a1, 44, 124), color: s.color, lx: Math.sin(mid) * 80, ly: -Math.cos(mid) * 80, mid, w: s.weight, show: s.weight > 0.07 });
+      sleeveArcs.push({ t: s.t, d: arc(a0, a1, 44, 124), color: s.color, lx: +(Math.sin(mid) * 80).toFixed(2), ly: +(-Math.cos(mid) * 80).toFixed(2), mid, w: s.weight, show: s.weight > 0.07 });
       let aacc = a0;
       sub.forEach((p, i) => {
         const sa0 = aacc,

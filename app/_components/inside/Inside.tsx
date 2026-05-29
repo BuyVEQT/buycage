@@ -30,7 +30,9 @@ function heroSparkPaths(seed: number) {
   const Y = (vv: number) => H - 1 - ((vv - min) / dy) * (H - 2);
   const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${X(i).toFixed(1)} ${Y(p).toFixed(1)}`).join(" ");
   const area = `${line} L ${W} ${H} L 0 ${H} Z`;
-  return { line, area, cx: X(N - 1), cy: Y(pts[N - 1]) };
+  // Round the trig-derived endpoint dot: Math.sin/cos differ in the last ULP
+  // across the SSR/client engines, which would trip hydration on cx/cy.
+  return { line, area, cx: +X(N - 1).toFixed(1), cy: +Y(pts[N - 1]).toFixed(1) };
 }
 
 function HeroStat({
@@ -74,9 +76,14 @@ function HeroStat({
 export default function Inside() {
   const { RETURNS, PRICE, CAGE_BARS, CAGE_META, fetchedAt } = useDataset();
   const sessions = Math.max(CAGE_BARS.length, 0);
-  const daysListed = Math.max(1, Math.round((Date.now() - INCEPTION.getTime()) / 86400000));
+  // Derive from fetchedAt, never Date.now(): this component SSRs now, and a
+  // render-time clock would differ between server and client (hydration).
+  const asOf = fetchedAt ? new Date(fetchedAt) : null;
+  const daysListed = Math.max(1, Math.round(((asOf ?? INCEPTION).getTime() - INCEPTION.getTime()) / 86400000));
   const aumM = PRICE.aum > 0 ? PRICE.aum / 1_000_000 : 0;
-  const refresh = new Date(fetchedAt ?? Date.now()).toLocaleString("en-CA", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+  const refresh = asOf
+    ? asOf.toLocaleString("en-CA", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })
+    : null;
 
   return (
     <>
@@ -141,7 +148,7 @@ export default function Inside() {
             </div>
             <div className="mtile">
               <div className="t">Last refresh</div>
-              <p><b>{refresh} ET.</b> Prices live during market hours; holdings refresh quarterly. Real Yahoo data — empty timeframes grey out.</p>
+              <p><b>{refresh ? `${refresh} ET.` : "Awaiting first data refresh."}</b> Prices live during market hours; holdings refresh quarterly. Real Yahoo data — empty timeframes grey out.</p>
             </div>
           </div>
         </section>
