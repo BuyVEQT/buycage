@@ -1,15 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useDataset } from "./dataset";
 import { SIB_PALETTE } from "./data";
-import {
-  SLEEVE_META,
-  TODAY_HOLDINGS,
-  TODAY_FACTORS,
-  SEARCH_FIXTURES,
-} from "./today.data";
+import { SLEEVE_META, TODAY_HOLDINGS, TODAY_FACTORS } from "./today.data";
 import { SiteHeader } from "../chrome/SiteHeader";
 import { SiteFooter } from "../chrome/SiteFooter";
 import { TAU, arc, sparkPath, useInView, useCountUp } from "../inside/viz";
@@ -356,67 +351,62 @@ function CompareChart() {
     H = 280,
     P = 20;
 
-  if (!hasData || !series) {
-    return (
-      <section className="compare">
-        <div className="sec-head bare">
-          <div className="num">03</div>
-          <h2>CAGE vs <em>the giants.</em></h2>
-          <div className="right">Since inception<br />Total return</div>
-        </div>
-        <div className="compare-frame">
-          <div className="compare-chart" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-3)" }}>
-              Not enough price history yet
-            </span>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  const visible: number[] = [];
-  (Object.keys(show) as (keyof typeof show)[]).forEach((k) => {
-    if (show[k]) series[k].forEach((v) => v != null && visible.push(v));
-  });
-  const dataMin = Math.min(0, ...visible);
-  const dataMax = Math.max(...visible, 1);
-  const pad = (dataMax - dataMin) * 0.12 || 1;
-  const yMin = dataMin - pad,
-    yMax = dataMax + pad;
-
-  const x = (i: number) => P + (i / (N - 1)) * (W - 2 * P);
-  const y = (v: number) => H - P - ((v - yMin) / (yMax - yMin)) * (H - 2 * P);
-
-  const step = yMax - yMin > 30 ? 10 : 5;
-  const grid: number[] = [];
-  for (let g = Math.ceil(yMin / step) * step; g <= yMax; g += step) grid.push(g);
-
-  const lines: { key: keyof typeof show; color: string; sw: number }[] = [
-    { key: "veqt", color: veqtColor, sw: 1.6 },
-    { key: "xeqt", color: xeqtColor, sw: 1.6 },
-    { key: "cage", color: "var(--hot)", sw: 2.6 },
-  ];
-
   const endPct = (arr: (number | null)[]) => {
     for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return arr[i] as number;
     return 0;
   };
   const meta = {
     cage: RETURNS.fund.SI,
-    veqt: endPct(series.veqt),
-    xeqt: endPct(series.xeqt),
+    veqt: series ? endPct(series.veqt) : 0,
+    xeqt: series ? endPct(series.xeqt) : 0,
   };
+  const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 
-  return (
-    <section className="compare">
-      <div className="sec-head bare">
-        <div className="num">03</div>
-        <h2>CAGE vs <em>the giants.</em></h2>
-        <div className="right">Since inception<br />Total return</div>
+  // Mobile: the full interactive chart doesn't read well on a phone, so swap it
+  // for a compact tap-through card to the full performance chart on /inside.
+  const mobileCard = (
+    <Link href="/inside#performance" className="compare-mobile">
+      <div className="cm-cap">Since inception · total return</div>
+      <div className="cm-rows">
+        <div className="cm-row"><span className="sw" style={{ background: "var(--hot)" }} />CAGE<b>{fmtPct(meta.cage)}</b></div>
+        <div className="cm-row"><span className="sw" style={{ background: veqtColor }} />VEQT<b>{fmtPct(meta.veqt)}</b></div>
+        <div className="cm-row"><span className="sw" style={{ background: xeqtColor }} />XEQT<b>{fmtPct(meta.xeqt)}</b></div>
       </div>
+      <span className="go">See the full comparison inside →</span>
+    </Link>
+  );
 
-      <div className="compare-frame">
+  let frameInner: React.ReactNode;
+  if (!hasData || !series) {
+    frameInner = (
+      <div className="compare-chart" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-3)" }}>
+          Not enough price history yet
+        </span>
+      </div>
+    );
+  } else {
+    const visible: number[] = [];
+    (Object.keys(show) as (keyof typeof show)[]).forEach((k) => {
+      if (show[k]) series[k].forEach((v) => v != null && visible.push(v));
+    });
+    const dataMin = Math.min(0, ...visible);
+    const dataMax = Math.max(...visible, 1);
+    const pad = (dataMax - dataMin) * 0.12 || 1;
+    const yMin = dataMin - pad,
+      yMax = dataMax + pad;
+    const x = (i: number) => P + (i / (N - 1)) * (W - 2 * P);
+    const y = (v: number) => H - P - ((v - yMin) / (yMax - yMin)) * (H - 2 * P);
+    const stepv = yMax - yMin > 30 ? 10 : 5;
+    const grid: number[] = [];
+    for (let g = Math.ceil(yMin / stepv) * stepv; g <= yMax; g += stepv) grid.push(g);
+    const lines: { key: keyof typeof show; color: string; sw: number }[] = [
+      { key: "veqt", color: veqtColor, sw: 1.6 },
+      { key: "xeqt", color: xeqtColor, sw: 1.6 },
+      { key: "cage", color: "var(--hot)", sw: 2.6 },
+    ];
+    frameInner = (
+      <>
         <div className="compare-head">
           <h3>Since inception, side-by-side</h3>
           <div className="toggles">
@@ -454,18 +444,30 @@ function CompareChart() {
           </svg>
         </div>
         <div className="compare-meta">
-          <div className="cmeta"><span className="sw" style={{ background: "var(--hot)" }} /><span className="nm">CAGE</span><span className="v num">{meta.cage >= 0 ? "+" : ""}{meta.cage.toFixed(2)}%</span></div>
-          <div className="cmeta"><span className="sw" style={{ background: veqtColor }} /><span className="nm">VEQT</span><span className="v num">{meta.veqt >= 0 ? "+" : ""}{meta.veqt.toFixed(2)}%</span></div>
-          <div className="cmeta"><span className="sw" style={{ background: xeqtColor }} /><span className="nm">XEQT</span><span className="v num">{meta.xeqt >= 0 ? "+" : ""}{meta.xeqt.toFixed(2)}%</span></div>
+          <div className="cmeta"><span className="sw" style={{ background: "var(--hot)" }} /><span className="nm">CAGE</span><span className="v num">{fmtPct(meta.cage)}</span></div>
+          <div className="cmeta"><span className="sw" style={{ background: veqtColor }} /><span className="nm">VEQT</span><span className="v num">{fmtPct(meta.veqt)}</span></div>
+          <div className="cmeta"><span className="sw" style={{ background: xeqtColor }} /><span className="nm">XEQT</span><span className="v num">{fmtPct(meta.xeqt)}</span></div>
         </div>
+      </>
+    );
+  }
+
+  return (
+    <section className="compare">
+      <div className="sec-head bare">
+        <div className="num">03</div>
+        <h2>CAGE vs <em>the giants.</em></h2>
+        <div className="right">Since inception<br />Total return</div>
       </div>
+      <div className="compare-frame">{frameInner}</div>
+      {mobileCard}
     </section>
   );
 }
 
-// ─── Factor exposures ─────────────────────────────────────────────────────────
+// ─── Factor exposures (tap-through to the Why article) ─────────────────────────
 function Factors() {
-  const { ref, inView } = useInView<HTMLDivElement>(0.25);
+  const { ref, inView } = useInView<HTMLAnchorElement>(0.25);
   return (
     <section className="factors-wrap">
       <div className="sec-head bare">
@@ -473,12 +475,13 @@ function Factors() {
         <h2>The <em>whole point</em> of CAGE.</h2>
         <div className="right">Factor loadings<br />vs ACWI IMI</div>
       </div>
-      <div className="factors" ref={ref}>
+      <Link href="/why" className="factors" ref={ref}>
         <div className="factors-intro">
           <div className="l">The receipts</div>
           <h3>Market-cap weighting is one bet. CAGE is <em>four.</em></h3>
           <p>VEQT and XEQT weight every company by what other investors pay. <strong>CAGE doesn&apos;t.</strong> Avantis scores every stock daily on price, book equity, and cash profitability — then nudges toward names that look cheap and productive.</p>
-          <p>The bars are the receipts. Positive numbers mean CAGE owns more of that style than a passive global index would. <strong>The whole investment thesis is in the bars to the right.</strong></p>
+          <p>Positive numbers mean CAGE owns more of that style than a passive global index would.</p>
+          <span className="factors-go">Read the full case <span>→</span></span>
         </div>
         <div className="factors-bars">
           {TODAY_FACTORS.map((f) => {
@@ -501,67 +504,7 @@ function Factors() {
             );
           })}
         </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Holdings search ──────────────────────────────────────────────────────────
-function Search() {
-  const [q, setQ] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement !== inputRef.current) {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
-
-  const result = useMemo(() => {
-    if (!q.trim()) return null;
-    const key = q.toUpperCase().trim().split(/\s+/)[0];
-    const hit =
-      SEARCH_FIXTURES[key] ||
-      Object.values(SEARCH_FIXTURES).find((h) => h.name.toLowerCase().includes(q.toLowerCase()));
-    return { q, hit };
-  }, [q]);
-
-  return (
-    <section className="search-wrap">
-      <div className="sec-head bare">
-        <div className="num">05</div>
-        <h2>Look <em>inside.</em></h2>
-        <div className="right">Try: AAPL · TD · NVDA<br />/ to focus</div>
-      </div>
-      <div className="search">
-        <div className="l">Holdings lookup · ~9,000 stocks</div>
-        <h3>Does CAGE own <em>that</em>?</h3>
-        <div className="search-input-wrap">
-          <input ref={inputRef} placeholder="any ticker or company…" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} />
-          <span className="kbd">/</span>
-        </div>
-        <div className="search-result">
-          {!result ? (
-            <span style={{ color: "var(--ink-3)" }}>Type a ticker — AAPL, TD, NESN, BRK…</span>
-          ) : !result.hit ? (
-            <>
-              <span className="tag">Not in CAGE</span>
-              <strong>&ldquo;{result.q}&rdquo;</strong> doesn&apos;t appear in any of the five sleeves at any meaningful weight.
-            </>
-          ) : (
-            <>
-              <span className="tag">In {result.hit.sleeve}</span>
-              <strong>{result.hit.name}</strong> · effective weight in CAGE: <strong>{result.hit.weight.toFixed(2)}%</strong> · CAGE <strong>{result.hit.signal}</strong>{" "}
-              <span style={{ color: "var(--ink-3)" }}>({result.hit.reason}).</span>
-            </>
-          )}
-        </div>
-      </div>
+      </Link>
     </section>
   );
 }
@@ -611,11 +554,10 @@ export default function Today() {
         <XRay />
         <CompareChart />
         <Factors />
-        <Search />
 
         <section className="teasers-wrap">
           <div className="sec-head bare">
-            <div className="num">06</div>
+            <div className="num">05</div>
             <h2>Go <em>deeper.</em></h2>
             <div className="right">The article<br />or the data</div>
           </div>
