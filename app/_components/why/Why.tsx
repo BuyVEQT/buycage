@@ -29,12 +29,19 @@ const STEPS: { scene: Scene; mode: "" | "cap" | "tilt" }[] = [
 function ReadProgress() {
   const [w, setW] = useState(0);
   useEffect(() => {
-    const onScroll = () => {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
       const h = document.documentElement.scrollHeight - window.innerHeight;
       setW(h > 0 ? (window.scrollY / h) * 100 : 0);
     };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    update();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   return <div className="read-progress" style={{ width: `${w}%` }} />;

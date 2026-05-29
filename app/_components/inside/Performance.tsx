@@ -16,6 +16,7 @@ const PERIODS: { k: string; label: string; n: number }[] = [
   { k: "1m", label: "1M", n: 22 },
   { k: "all", label: "Since launch", n: Infinity },
 ];
+const KEYS: Key[] = ["cage", "veqt", "xeqt", "acwi"];
 
 function prices(points: { t: number; price: number | null }[]): (number | null)[] {
   return points.map((p) => p.price);
@@ -58,8 +59,7 @@ export function Performance() {
     };
   }, [full, period]);
 
-  const keys: Key[] = ["cage", "veqt", "xeqt", "acwi"];
-  const visible = keys.filter((k) => show[k]);
+  const visible = useMemo(() => KEYS.filter((k) => show[k]), [show]);
   const n = win.cage.length;
 
   const { x, y, grid, paths, ends, yMin, yMax } = useMemo(() => {
@@ -134,7 +134,7 @@ export function Performance() {
             ))}
           </div>
           <div className="series-toggles">
-            {keys.map((k) => (
+            {KEYS.map((k) => (
               <button key={k} data-key={k} className={show[k] ? "on" : ""} onClick={() => setShow((s) => ({ ...s, [k]: !s[k] }))}>{NAMES[k]}</button>
             ))}
           </div>
