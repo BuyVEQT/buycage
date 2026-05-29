@@ -5,6 +5,7 @@
   max-width: 1480px;
   margin: 0 auto;
   padding: 0;
+  overflow-x: clip;
 
   /* ─── HERO ─── */
   .ic-hero {
@@ -564,4 +565,40 @@
 @keyframes rowIn {
   from { opacity: 0; transform: translateX(-6px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Phone overhaul (≤600px) ─── */
+@media (max-width: 600px) {
+  .tp-inside .ic-hero {
+    padding: 32px 16px;
+  }
+  .tp-inside .ic-hero-inner {
+    gap: 28px;
+  }
+  .tp-inside .ic-h1 {
+    font-size: clamp(48px, 16vw, 96px);
+  }
+  .tp-inside .sec-block {
+    padding: 40px 16px;
+  }
+  .tp-inside .sec-head .num {
+    font-size: 48px;
+  }
+  .tp-inside .anat-table {
+    overflow-x: auto;
+  }
+  .tp-inside .at-search,
+  .tp-inside .at-head,
+  .tp-inside .at-trow,
+  .tp-inside .at-foot {
+    min-width: 540px;
+  }
+  .tp-inside .at-tbody {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .tp-inside .rhythm-grid {
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+    padding: 16px;
+  }
 }

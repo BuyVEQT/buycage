@@ -3,6 +3,7 @@
 
 .tp-why {
   position: relative;
+  overflow-x: clip;
 
   /* ─── Hero ─── */
   .why-hero {
@@ -213,4 +214,32 @@
 @keyframes bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(5px); }
+}
+
+/* ─── Phone overhaul (≤600px) ─── */
+@media (max-width: 600px) {
+  .tp-why .why-hero {
+    padding: 40px 16px 32px;
+  }
+  .tp-why .scrolly {
+    padding: 0 16px;
+  }
+  .tp-why .sec-block {
+    padding: 48px 16px;
+  }
+  .tp-why .sec-head .num {
+    font-size: 48px;
+  }
+  .tp-why .dial {
+    padding: 22px 18px;
+  }
+  .tp-why .why-cta {
+    padding: 0 16px 64px;
+  }
+  .tp-why .why-cta .band {
+    padding: 28px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
 }
