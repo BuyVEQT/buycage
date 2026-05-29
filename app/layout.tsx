@@ -39,6 +39,20 @@ export const metadata: Metadata = {
   },
   description:
     "A daily, opinionated read on CAGE — the Canadian all-equity ETF that tilts toward cheaper, more profitable companies.",
+  openGraph: {
+    type: "website",
+    siteName: "JustBuyCage",
+    url: "https://buycage.ca",
+    title: "JustBuyCage — Trust the math, not the crowd",
+    description:
+      "The only Canadian-listed all-equity ETF that tilts on purpose — toward cheaper, more profitable companies.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "JustBuyCage — Trust the math, not the crowd",
+    description:
+      "The only Canadian-listed all-equity ETF that tilts on purpose — toward cheaper, more profitable companies.",
+  },
 };
 
 export const viewport: Viewport = {
