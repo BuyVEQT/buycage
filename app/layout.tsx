@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Archivo_Black, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { JsonLd } from "./_components/JsonLd";
+import { SITE_NAME, SITE_URL, organizationLd, websiteLd } from "@/lib/seo";
 import "./globals.css";
 
 const archivoBlack = Archivo_Black({
@@ -32,26 +34,40 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://buycage.ca"),
+  // Canonical host is www — the only host wired in Vercel. The apex doesn't
+  // resolve, so an apex metadataBase made every canonical + og:image point at
+  // a dead domain (broken link-preview cards everywhere).
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "JustBuyCage — Trust the math, not the crowd",
+    default: "JustBuyCage — Live CAGE ETF (CAGE.TO) Dashboard",
     template: "%s · JustBuyCage",
   },
   description:
-    "A daily, opinionated read on CAGE — the Canadian all-equity ETF that tilts toward cheaper, more profitable companies.",
+    "A daily, independent read on CAGE — the Avantis CIBC All-Equity ETF (CAGE.TO) that tilts toward cheaper, more profitable companies.",
+  applicationName: SITE_NAME,
+  keywords: [
+    "CAGE ETF",
+    "CAGE.TO",
+    "Avantis CIBC All-Equity ETF",
+    "CAGE vs VEQT",
+    "CAGE vs XEQT",
+    "factor investing Canada",
+    "value ETF Canada",
+    "all-equity ETF",
+  ],
   openGraph: {
     type: "website",
-    siteName: "JustBuyCage",
-    url: "https://buycage.ca",
-    title: "JustBuyCage — Trust the math, not the crowd",
+    siteName: SITE_NAME,
+    url: SITE_URL,
+    title: "JustBuyCage — Live CAGE ETF (CAGE.TO) Dashboard",
     description:
-      "The only Canadian-listed all-equity ETF that tilts on purpose — toward cheaper, more profitable companies.",
+      "The Canadian all-equity ETF that tilts on purpose — toward cheaper, more profitable companies. Live price, holdings, and the case for the tilt.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "JustBuyCage — Trust the math, not the crowd",
+    title: "JustBuyCage — Live CAGE ETF (CAGE.TO) Dashboard",
     description:
-      "The only Canadian-listed all-equity ETF that tilts on purpose — toward cheaper, more profitable companies.",
+      "The Canadian all-equity ETF that tilts on purpose — toward cheaper, more profitable companies.",
   },
 };
 
@@ -72,6 +88,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
+        <JsonLd data={[organizationLd(), websiteLd()]} />
         {children}
         <Analytics />
         <SpeedInsights />
