@@ -5,6 +5,10 @@ export const TAU = Math.PI * 2;
 // Annular arc path (sunburst wedge) from angle a0→a1, radius r0→r1.
 export function arc(a0: number, a1: number, r0: number, r1: number): string {
   const large = a1 - a0 > Math.PI ? 1 : 0;
+  // Round to 2 decimals. Math.sin/cos can differ in the last ULP between the
+  // SSR (Node) and client (browser) JS engines, which otherwise trips React
+  // hydration on the full-precision path string. Sub-pixel in these viewBoxes.
+  const f = (n: number) => n.toFixed(2);
   const x0 = Math.sin(a0) * r1,
     y0 = -Math.cos(a0) * r1;
   const x1 = Math.sin(a1) * r1,
@@ -13,7 +17,7 @@ export function arc(a0: number, a1: number, r0: number, r1: number): string {
     y2 = -Math.cos(a1) * r0;
   const x3 = Math.sin(a0) * r0,
     y3 = -Math.cos(a0) * r0;
-  return `M ${x0} ${y0} A ${r1} ${r1} 0 ${large} 1 ${x1} ${y1} L ${x2} ${y2} A ${r0} ${r0} 0 ${large} 0 ${x3} ${y3} Z`;
+  return `M ${f(x0)} ${f(y0)} A ${r1} ${r1} 0 ${large} 1 ${f(x1)} ${f(y1)} L ${f(x2)} ${f(y2)} A ${r0} ${r0} 0 ${large} 0 ${f(x3)} ${f(y3)} Z`;
 }
 
 // Deterministic sparkline path over a 52×18 box (holdings rows).

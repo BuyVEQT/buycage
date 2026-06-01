@@ -153,7 +153,12 @@ export function Flow() {
     rails.forEach((rail, ri) => {
       const count = Math.max(2, Math.round(rail.w * 26));
       for (let i = 0; i < count; i++) {
-        particles.push({ rail: ri, off: Math.random(), spd: 0.1 + Math.random() * 0.1, r: 1.4 + Math.random() * 1.2, color: rail.color, from: rail.from, to: rail.to });
+        // r is rendered into the SSR HTML, so it must be deterministic —
+        // Math.random() differs between server and client and breaks hydration.
+        // A golden-ratio spread on the running index varies the radius either
+        // side. off/spd only drive the client-side animation, so they stay random.
+        const dr = ((particles.length * 0.6180339887) % 1) * 1.2;
+        particles.push({ rail: ri, off: Math.random(), spd: 0.1 + Math.random() * 0.1, r: +(1.4 + dr).toFixed(2), color: rail.color, from: rail.from, to: rail.to });
       }
     });
 

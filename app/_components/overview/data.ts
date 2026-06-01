@@ -1017,7 +1017,13 @@ export function buildMockDataset(refDate?: Date): Dataset {
  * disables affected timeframes.
  */
 export function buildLiveDataset(payload: DashboardPayload): Dataset {
-  const today = new Date();
+  // Derive "today" from the server-stamped fetch time, NOT new Date(), so the
+  // dataset is a pure function of the payload and renders identically on the
+  // server and during client hydration. The wrappers build this dataset on both
+  // sides, so a render-time clock here would cause SSR hydration mismatches.
+  // Falls back to inception when there's no timestamp (empty payload has no
+  // bars to filter anyway).
+  const today = new Date(payload.fetchedAt ?? CAGE_META.inception);
 
   const cageBars =
     payload.cage.history && payload.cage.history.data.length > 0
@@ -1065,7 +1071,10 @@ export function buildLiveDataset(payload: DashboardPayload): Dataset {
  */
 export function emptyPayload(): DashboardPayload {
   return {
-    fetchedAt: new Date().toISOString(),
+    // null, not new Date(): a render-time clock here would differ between SSR
+    // and hydration. No data → no "as of" timestamp, which the UI treats as an
+    // empty state anyway.
+    fetchedAt: null,
     cage: {
       ticker: "CAGE",
       fullName: CAGE_META.name,
